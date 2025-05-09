@@ -1,0 +1,98 @@
+// src/app/customer/dashboard/customer-dashboard.component.html
+`
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+    </ion-buttons>
+    <ion-title>Customer Dashboard</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-refresher slot="fixed" (ionRefresh)="loadDashboardData(); $event.target.complete()">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <div *ngIf="isLoading" class="ion-text-center ion-padding">
+    <ion-spinner></ion-spinner>
+    <p>Loading dashboard...</p>
+  </div>
+
+  <div *ngIf="!isLoading">
+    <div class="welcome-card ion-padding">
+      <h1 *ngIf="user$ | async as user">Welcome, {{ user.displayName || 'Customer' }}!</h1>
+      <p>Track your orders and place new ones from this dashboard.</p>
+    </div>
+
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>
+          Recent Orders
+          <ion-button size="small" fill="clear" (click)="viewAllOrders()">
+            View All
+          </ion-button>
+        </ion-card-title>
+      </ion-card-header>
+
+      <ion-card-content>
+        <ng-container *ngIf="recentOrders$ | async as recentOrders">
+          <ion-list *ngIf="recentOrders.length > 0">
+            <ion-item *ngFor="let order of recentOrders" (click)="viewOrder(order.id)" detail>
+              <ion-label>
+                <h2>Order #{{ order.id.substring(0, 8) }}</h2>
+                <p>{{ formatDate(order.createdAt) }}</p>
+              </ion-label>
+              <ion-badge slot="end" [color]="
+                order.status === 'pending' ? 'warning' :
+                order.status === 'processing' ? 'primary' :
+                order.status === 'shipped' ? 'tertiary' :
+                order.status === 'delivered' ? 'success' :
+                'danger'
+              ">
+                {{ order.status | uppercase }}
+              </ion-badge>
+            </ion-item>
+          </ion-list>
+
+          <div *ngIf="recentOrders.length === 0" class="ion-text-center ion-padding">
+            <ion-icon name="cart-outline" size="large" color="medium"></ion-icon>
+            <h4>No Orders Yet</h4>
+            <p>You haven't placed any orders yet. Browse available forms to place an order.</p>
+          </div>
+        </ng-container>
+      </ion-card-content>
+    </ion-card>
+
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>
+          Available Forms
+          <ion-button size="small" fill="clear" (click)="viewAllForms()">
+            View All
+          </ion-button>
+        </ion-card-title>
+      </ion-card-header>
+
+      <ion-card-content>
+        <ng-container *ngIf="availableForms$ | async as availableForms">
+          <ion-list *ngIf="availableForms.length > 0">
+            <ion-item *ngFor="let form of availableForms" (click)="placeOrder(form.id)" detail>
+              <ion-label>
+                <h2>{{ form.title }}</h2>
+                <p>{{ form.description || 'No description' }}</p>
+              </ion-label>
+            </ion-item>
+          </ion-list>
+
+          <div *ngIf="availableForms.length === 0" class="ion-text-center ion-padding">
+            <ion-icon name="document-text-outline" size="large" color="medium"></ion-icon>
+            <h4>No Forms Available</h4>
+            <p>There are no order forms available at this time.</p>
+          </div>
+        </ng-container>
+      </ion-card-content>
+    </ion-card>
+  </div>
+</ion-content>
+`

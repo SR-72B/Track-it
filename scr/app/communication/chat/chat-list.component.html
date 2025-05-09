@@ -1,0 +1,46 @@
+// src/app/communication/chat/chat-list.component.html
+`
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+    </ion-buttons>
+    <ion-title>Messages</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-refresher slot="fixed" (ionRefresh)="loadChats(); $event.target.complete()">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <div *ngIf="isLoading" class="ion-text-center ion-padding">
+    <ion-spinner></ion-spinner>
+    <p>Loading conversations...</p>
+  </div>
+
+  <ng-container *ngIf="!isLoading">
+    <ng-container *ngIf="chatPartners$ | async as chatPartners">
+      <ion-list *ngIf="chatPartners.length > 0">
+        <ion-item *ngFor="let partner of chatPartners" (click)="openChat(partner.id)" detail>
+          <ion-avatar slot="start">
+            <ion-icon name="person" class="avatar-icon"></ion-icon>
+          </ion-avatar>
+          <ion-label>
+            <h2>{{ partner.name }}</h2>
+            <p>{{ partner.lastMessage }}</p>
+          </ion-label>
+          <ion-note slot="end">{{ formatTime(partner.lastMessageTime) }}</ion-note>
+          <ion-badge *ngIf="partner.unreadCount > 0" color="danger" slot="end">{{ partner.unreadCount }}</ion-badge>
+        </ion-item>
+      </ion-list>
+
+      <div *ngIf="chatPartners.length === 0" class="ion-text-center ion-padding">
+        <ion-icon name="chatbubbles-outline" size="large" color="medium"></ion-icon>
+        <h4>No Messages</h4>
+        <p>You don't have any conversations yet.</p>
+      </div>
+    </ng-container>
+  </ng-container>
+</ion-content>
+`

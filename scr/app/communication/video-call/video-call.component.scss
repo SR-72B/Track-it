@@ -1,0 +1,212 @@
+// src/app/communication/video-call/video-call.component.scss
+.video-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-color: #000;
+    overflow: hidden;
+  }
+  
+  .remote-video-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+  }
+  
+  .remote-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .local-video-container {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 120px;
+    height: 160px;
+    border-radius: 8px;
+    overflow: hidden;
+    z-index: 2;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+  
+  .local-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1); /* Mirror local video */
+  }
+  
+  .connecting-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 3;
+  }
+  
+  .connecting-overlay ion-spinner {
+    margin-bottom: 16px;
+  }
+  
+  .connecting-overlay p {
+    color: white;
+    font-size: 18px;
+    font-weight: 500;
+  }
+  
+  .call-actions {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 24px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 3;
+  }
+  
+  .call-actions h2 {
+    color: white;
+    margin-bottom: 24px;
+    font-size: 20px;
+    font-weight: 600;
+    text-align: center;
+  }
+  
+  .action-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+  }
+  
+  .call-button {
+    width: 64px;
+    height: 64px;
+    border-radius: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+  
+  .call-button ion-icon {
+    font-size: 32px;
+  }
+  
+  ion-footer {
+    --background: rgba(0, 0, 0, 0.8);
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    z-index: 4;
+  }
+  
+  ion-toolbar {
+    --background: transparent;
+    --min-height: 80px;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 16px;
+  }
+  
+  ion-buttons {
+    display: flex;
+    justify-content: space-evenly;
+    width: 100%;
+  }
+  
+  ion-button {
+    --border-radius: 50%;
+    --padding-start: 0;
+    --padding-end: 0;
+    width: 56px;
+    height: 56px;
+  }
+  
+  ion-button ion-icon {
+    font-size: 24px;
+  }
+  
+  /* Controls for different states */
+  ion-button[color="light"] {
+    --background: rgba(255, 255, 255, 0.2);
+  }
+  
+  ion-button[color="danger"] {
+    --background: var(--ion-color-danger);
+  }
+  
+  /* Animation for the connecting state */
+  @keyframes pulse {
+    0% {
+      opacity: 0.6;
+    }
+    50% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0.6;
+    }
+  }
+  
+  .connecting-overlay {
+    animation: pulse 1.5s infinite;
+  }
+  
+  /* Responsive adjustments */
+  @media (min-width: 768px) {
+    .local-video-container {
+      width: 180px;
+      height: 240px;
+      top: 24px;
+      right: 24px;
+    }
+    
+    .call-actions h2 {
+      font-size: 24px;
+    }
+    
+    .action-buttons {
+      gap: 32px;
+    }
+    
+    .call-button {
+      width: 72px;
+      height: 72px;
+    }
+    
+    ion-button {
+      width: 64px;
+      height: 64px;
+    }
+    
+    ion-button ion-icon {
+      font-size: 28px;
+    }
+  }
+  
+  /* Landscape orientation */
+  @media (orientation: landscape) {
+    .local-video-container {
+      width: 160px;
+      height: 120px;
+    }
+    
+    ion-footer ion-toolbar {
+      --min-height: 72px;
+    }
+  }

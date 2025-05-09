@@ -1,0 +1,110 @@
+// src/app/customer/place-order/place-order.component.html
+`
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/customer/forms"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Place Order</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <ng-container *ngIf="orderForm$ | async as orderForm; else loading">
+    <div class="form-header">
+      <h1>{{ orderForm.title }}</h1>
+      <p *ngIf="orderForm.description">{{ orderForm.description }}</p>
+    </div>
+
+    <form [formGroup]="dynamicForm" (ngSubmit)="submitOrder()">
+      <ion-item>
+        <ion-label position="floating">Purchase Order (Optional)</ion-label>
+        <ion-input formControlName="purchaseOrder"></ion-input>
+      </ion-item>
+
+      <ng-container *ngFor="let field of orderForm.fields">
+        <ion-item *ngIf="field.type === 'text'">
+          <ion-label position="floating">{{ field.label }}</ion-label>
+          <ion-input [formControlName]="field.label" type="text"></ion-input>
+        </ion-item>
+
+        <ion-item *ngIf="field.type === 'email'">
+          <ion-label position="floating">{{ field.label }}</ion-label>
+          <ion-input [formControlName]="field.label" type="email"></ion-input>
+        </ion-item>
+
+        <ion-item *ngIf="field.type === 'phone'">
+          <ion-label position="floating">{{ field.label }}</ion-label>
+          <ion-input [formControlName]="field.label" type="tel"></ion-input>
+        </ion-item>
+
+        <ion-list *ngIf="field.type === 'radio'">
+          <ion-list-header>
+            <ion-label>{{ field.label }}</ion-label>
+          </ion-list-header>
+          <ion-radio-group [formControlName]="field.label">
+            <ion-item *ngFor="let option of field.options">
+              <ion-label>{{ option }}</ion-label>
+              <ion-radio slot="start" [value]="option"></ion-radio>
+            </ion-item>
+          </ion-radio-group>
+        </ion-list>
+
+        <ion-text color="danger" *ngIf="dynamicForm.get(field.label)?.touched && dynamicForm.get(field.label)?.errors?.required">
+          <p class="error-message">{{ field.label }} is required</p>
+        </ion-text>
+      </ng-container>
+
+      <div *ngIf="orderForm.allowFileUpload" class="file-upload-section">
+        <ion-item-divider>File Upload</ion-item-divider>
+        
+        <ion-item>
+          <ion-label>Allowed file types: {{ orderForm.allowedFileTypes.join(', ') }}</ion-label>
+        </ion-item>
+        
+        <div class="file-input-container">
+          <ion-button color="medium" (click)="fileInput.click()">
+            <ion-icon name="cloud-upload" slot="start"></ion-icon>
+            Select Files
+          </ion-button>
+          <input 
+            #fileInput 
+            type="file" 
+            style="display: none;" 
+            (change)="onFileSelected($event)" 
+            [accept]="orderForm.allowedFileTypes.map(type => '.' + type).join(',')"
+            multiple>
+        </div>
+
+        <ion-list *ngIf="selectedFiles.length > 0">
+          <ion-item *ngFor="let file of selectedFiles; let i = index">
+            <ion-label>
+              <h3>{{ file.name }}</h3>
+              <p>{{ file.size | number }} bytes</p>
+            </ion-label>
+            <ion-button slot="end" fill="clear" color="danger" (click)="removeFile(i)">
+              <ion-icon name="close-circle"></ion-icon>
+            </ion-button>
+          </ion-item>
+        </ion-list>
+      </div>
+
+      <div class="cancellation-policy">
+        <ion-item-divider>Cancellation Policy</ion-item-divider>
+        <p>{{ orderForm.cancellationPolicy }}</p>
+      </div>
+
+      <ion-button expand="block" type="submit" [disabled]="dynamicForm.invalid || isSubmitting" class="ion-margin-top">
+        Submit Order
+      </ion-button>
+    </form>
+  </ng-container>
+
+  <ng-template #loading>
+    <div class="ion-text-center ion-padding">
+      <ion-spinner></ion-spinner>
+      <p>Loading form...</p>
+    </div>
+  </ng-template>
+</ion-content>
+`

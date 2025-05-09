@@ -1,0 +1,67 @@
+// src/app/retailer/form-list/form-list.component.html
+`
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+    </ion-buttons>
+    <ion-title>Order Forms</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="createForm()">
+        <ion-icon slot="icon-only" name="add"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-refresher slot="fixed" (ionRefresh)="loadForms(); $event.target.complete()">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <div *ngIf="isLoading" class="ion-text-center ion-padding">
+    <ion-spinner></ion-spinner>
+    <p>Loading forms...</p>
+  </div>
+
+  <ng-container *ngIf="!isLoading">
+    <ng-container *ngIf="forms$ | async as forms">
+      <ion-list *ngIf="forms.length > 0">
+        <ion-item-sliding *ngFor="let form of forms">
+          <ion-item (click)="editForm(form.id)" detail>
+            <ion-label>
+              <h2>{{ form.title }}</h2>
+              <p>{{ form.description || 'No description' }}</p>
+              <p>{{ form.fields.length }} fields</p>
+            </ion-label>
+            <ion-badge slot="end" [color]="form.active ? 'success' : 'medium'">
+              {{ form.active ? 'Active' : 'Inactive' }}
+            </ion-badge>
+          </ion-item>
+
+          <ion-item-options side="end">
+            <ion-item-option color="primary" (click)="editForm(form.id); $event.stopPropagation()">
+              <ion-icon slot="icon-only" name="create"></ion-icon>
+            </ion-item-option>
+            <ion-item-option [color]="form.active ? 'warning' : 'success'" (click)="toggleFormStatus(form); $event.stopPropagation()">
+              <ion-icon slot="icon-only" [name]="form.active ? 'eye-off' : 'eye'"></ion-icon>
+            </ion-item-option>
+            <ion-item-option color="danger" (click)="deleteForm(form); $event.stopPropagation()">
+              <ion-icon slot="icon-only" name="trash"></ion-icon>
+            </ion-item-option>
+          </ion-item-options>
+        </ion-item-sliding>
+      </ion-list>
+
+      <div *ngIf="forms.length === 0" class="ion-text-center ion-padding">
+        <ion-icon name="document-text-outline" size="large" color="medium"></ion-icon>
+        <h4>No Order Forms</h4>
+        <p>Create your first order form to start collecting customer orders.</p>
+        <ion-button expand="block" (click)="createForm()">
+          Create Order Form
+        </ion-button>
+      </div>
+    </ng-container>
+  </ng-container>
+</ion-content>
+`
