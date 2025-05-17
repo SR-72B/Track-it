@@ -1,0 +1,31 @@
+# IDE/Editor specific
+.vscode/
+*.swp
+*~
+.idea/
+
+# Dependencies
+/node_modules/
+
+# Angular specific
+/.angular/cache/
+/dist/
+
+# Build files & logs
+*.log
+npm-debug.log*
+yarn-error.log*
+# package-lock.json # If you use yarn, keep yarn.lock and ignore this
+# yarn.lock # If you use npm, keep package-lock.json and ignore this (commit one lock file)
+
+# Firebase
+# .firebase/ # Contains local emulator data; firebase.json should usually be committed.
+# !firebase.json # Ensures firebase.json is NOT ignored if a broader rule matches.
+
+# Dataconnect / pgliteData
+# This is for your raw database files and should almost certainly be ignored.
+dataconnect/.dataconnect/pgliteData/
+
+# OS generated files
+.DS_Store
+Thumbs.db

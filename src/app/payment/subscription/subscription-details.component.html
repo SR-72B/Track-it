@@ -1,0 +1,79 @@
+// src/app/payment/subscription-details/subscription-details.component.html
+`
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/retailer/dashboard"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Subscription Details</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <ng-container *ngIf="subscription$ | async as subscription; else noSubscription">
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Retailer Subscription</ion-card-title>
+        <ion-card-subtitle>
+          <ion-badge [color]="subscription.status === 'active' || subscription.status === 'trial' ? 'success' : 'danger'">
+            {{ subscription.status === 'trial' ? 'FREE TRIAL' : subscription.status | uppercase }}
+          </ion-badge>
+        </ion-card-subtitle>
+      </ion-card-header>
+
+      <ion-card-content>
+        <ion-list lines="none">
+          <ion-item>
+            <ion-label>Plan:</ion-label>
+            <ion-note slot="end">Retailer (${{ subscription.amount }}/month)</ion-note>
+          </ion-item>
+          <ion-item>
+            <ion-label>Start Date:</ion-label>
+            <ion-note slot="end">{{ formatDate(subscription.startDate) }}</ion-note>
+          </ion-item>
+          <ion-item>
+            <ion-label>Next Billing Date:</ion-label>
+            <ion-note slot="end">{{ formatDate(subscription.endDate) }}</ion-note>
+          </ion-item>
+          <ion-item>
+            <ion-label>Payment Method:</ion-label>
+            <ion-note slot="end">{{ subscription.paymentMethod.cardNumber }}</ion-note>
+          </ion-item>
+          <ion-item>
+            <ion-label>Auto-Renew:</ion-label>
+            <ion-toggle slot="end" [checked]="subscription.autoRenew" disabled></ion-toggle>
+          </ion-item>
+        </ion-list>
+
+        <ion-button 
+          expand="block" 
+          color="danger" 
+          class="ion-margin-top"
+          [disabled]="subscription.status === 'cancelled' || isCancelling"
+          (click)="cancelSubscription(subscription)"
+          *ngIf="subscription.status !== 'cancelled'">
+          Cancel Subscription
+        </ion-button>
+
+        <div *ngIf="subscription.status === 'cancelled'" class="ion-text-center ion-margin-top">
+          <p>Your subscription will end on {{ formatDate(subscription.endDate) }}.</p>
+          <ion-button expand="block" color="primary" routerLink="/payment/subscription">
+            Renew Subscription
+          </ion-button>
+        </div>
+      </ion-card-content>
+    </ion-card>
+  </ng-container>
+
+  <ng-template #noSubscription>
+    <div class="no-subscription ion-text-center ion-padding">
+      <ion-icon name="alert-circle-outline" size="large"></ion-icon>
+      <h2>No Active Subscription</h2>
+      <p>You don't have an active subscription. Subscribe to access retailer features.</p>
+      <ion-button expand="block" routerLink="/payment/subscription">
+        Subscribe Now
+      </ion-button>
+    </div>
+  </ng-template>
+</ion-content>
+`

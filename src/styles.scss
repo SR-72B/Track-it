@@ -1,0 +1,194 @@
+/* 
+ * Track-it App Global Styles
+ * Main stylesheet for the Track-it Order Management System
+ */
+
+/* Import Ionic CSS variables (handled separately via angular.json) */
+
+/* Global Styling */
+:root {
+  // Custom palette
+  --app-background: #f8f9fa;
+  --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  --transition-medium: 0.3s ease;
+}
+
+/* Base Styles */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: "Roboto", "Helvetica Neue", sans-serif;
+  background-color: var(--app-background);
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  margin-top: 0;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+/* Card Styling */
+ion-card {
+  box-shadow: var(--card-shadow);
+  border-radius: 12px;
+}
+
+ion-card-header {
+  padding-bottom: 8px;
+}
+
+ion-card-title {
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Form Styling */
+ion-item {
+  --padding-start: 0;
+  --inner-padding-end: 0;
+  --background: transparent;
+}
+
+.error-message {
+  color: var(--ion-color-danger);
+  font-size: 12px;
+  margin: 4px 0 0 16px;
+}
+
+/* Button Styling */
+ion-button {
+  --border-radius: 8px;
+  font-weight: 500;
+}
+
+/* Status Badge Styling */
+ion-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+/* Dashboard Components */
+.welcome-card {
+  background: var(--ion-color-primary);
+  color: white;
+  border-radius: 0 0 16px 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  box-shadow: var(--card-shadow);
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: bold;
+  color: var(--ion-color-primary);
+}
+
+.stat-label {
+  font-size: 14px;
+  color: var(--ion-color-medium);
+  margin-top: 4px;
+}
+
+/* Order Status Colors */
+.status-pending {
+  color: var(--ion-color-warning);
+}
+
+.status-processing {
+  color: var(--ion-color-primary);
+}
+
+.status-shipped {
+  color: var(--ion-color-tertiary);
+}
+
+.status-delivered {
+  color: var(--ion-color-success);
+}
+
+.status-cancelled {
+  color: var(--ion-color-danger);
+}
+
+/* Order Update Timeline */
+.order-update {
+  margin-bottom: 16px;
+}
+
+.update-date {
+  margin-left: 8px;
+  font-size: 12px;
+  color: var(--ion-color-medium);
+}
+
+/* Utility Classes */
+.text-center {
+  text-align: center;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.text-bold {
+  font-weight: 600;
+}
+
+.mt-0 {
+  margin-top: 0;
+}
+
+.mb-0 {
+  margin-bottom: 0;
+}
+
+/* Animation Utilities */
+.fade-in {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Media Queries */
+@media (min-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 16px;
+  }
+}

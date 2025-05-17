@@ -1,0 +1,30 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "baseUrl": "./",
+    "outDir": "./dist/out-tsc",
+    "sourceMap": true,
+    "declaration": false,
+    "downlevelIteration": true,
+    "experimentalDecorators": true,
+    "moduleResolution": "node",
+    "importHelpers": true,
+    "target": "ES2022",         // Changed from es2015
+    "module": "es2020",
+    "lib": [
+      "ES2022",               // Changed from es2018
+      "dom"
+    ],
+    "useDefineForClassFields": false // Added to address the other part of the warning you saw
+  },
+  "angularCompilerOptions": {
+    "enableI18nLegacyMessageIdFormat": false,
+    "strictInjectionParameters": true,
+    "strictInputAccessModifiers": true,
+    "strictTemplates": true
+    // "strictNullChecks": true, // Consider adding these for stricter type checking
+    // "noImplicitAny": true,
+    // "noImplicitReturns": true,
+    // "noFallthroughCasesInSwitch": true
+  }
+}

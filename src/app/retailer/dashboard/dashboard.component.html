@@ -1,0 +1,128 @@
+// src/app/retailer/dashboard/dashboard.component.html
+`
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+    </ion-buttons>
+    <ion-title>Retailer Dashboard</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-refresher slot="fixed" (ionRefresh)="loadDashboardData(); $event.target.complete()">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <div *ngIf="isLoading" class="ion-text-center ion-padding">
+    <ion-spinner></ion-spinner>
+    <p>Loading dashboard...</p>
+  </div>
+
+  <div *ngIf="!isLoading">
+    <div class="welcome-card ion-padding">
+      <h1 *ngIf="user$ | async as user">Welcome, {{ user.displayName || 'Retailer' }}!</h1>
+      <p>Manage your orders and customer forms from this dashboard.</p>
+    </div>
+
+    <div class="stats-container ion-padding">
+      <h2>Order Statistics</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value">{{ orderCounts.total }}</div>
+          <div class="stat-label">Total Orders</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{{ orderCounts.pending }}</div>
+          <div class="stat-label">Pending</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{{ orderCounts.processing }}</div>
+          <div class="stat-label">Processing</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{{ orderCounts.shipped }}</div>
+          <div class="stat-label">Shipped</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{{ orderCounts.delivered }}</div>
+          <div class="stat-label">Delivered</div>
+        </div>
+      </div>
+    </div>
+
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>
+          Recent Orders
+          <ion-button size="small" fill="clear" (click)="viewAllOrders()" *ngIf="orderCounts.total > 0">
+            View All
+          </ion-button>
+        </ion-card-title>
+      </ion-card-header>
+
+      <ion-card-content>
+        <ng-container *ngIf="recentOrders$ | async as recentOrders">
+          <ion-list *ngIf="recentOrders.length > 0">
+            <ion-item *ngFor="let order of recentOrders" (click)="viewOrder(order.id)" detail>
+              <ion-label>
+                <h2>Order #{{ order.id.substring(0, 8) }}</h2>
+                <h3>{{ order.customerName }}</h3>
+                <p>{{ formatDate(order.createdAt) }}</p>
+              </ion-label>
+              <ion-badge slot="end" [color]="
+                order.status === 'pending' ? 'warning' :
+                order.status === 'processing' ? 'primary' :
+                order.status === 'shipped' ? 'tertiary' :
+                order.status === 'delivered' ? 'success' :
+                'danger'
+              ">
+                {{ order.status | uppercase }}
+              </ion-badge>
+            </ion-item>
+          </ion-list>
+
+          <div *ngIf="recentOrders.length === 0" class="ion-text-center ion-padding">
+            <ion-icon name="cart-outline" size="large" color="medium"></ion-icon>
+            <h4>No Orders Yet</h4>
+            <p>You haven't received any orders. Create order forms to start collecting customer orders.</p>
+          </div>
+        </ng-container>
+      </ion-card-content>
+    </ion-card>
+
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>
+          Active Forms
+          <ion-button size="small" fill="clear" (click)="viewAllForms()">
+            View All
+          </ion-button>
+        </ion-card-title>
+      </ion-card-header>
+
+      <ion-card-content>
+        <ng-container *ngIf="activeForms$ | async as activeForms">
+          <ion-list *ngIf="activeForms.length > 0">
+            <ion-item *ngFor="let form of activeForms" (click)="editForm(form.id)" detail>
+              <ion-label>
+                <h2>{{ form.title }}</h2>
+                <p>{{ form.description || 'No description' }}</p>
+              </ion-label>
+            </ion-item>
+          </ion-list>
+
+          <div *ngIf="activeForms.length === 0" class="ion-text-center ion-padding">
+            <ion-icon name="document-text-outline" size="large" color="medium"></ion-icon>
+            <h4>No Active Forms</h4>
+            <p>Create a form to start collecting orders from customers.</p>
+            <ion-button expand="block" (click)="createForm()">
+              Create Order Form
+            </ion-button>
+          </div>
+        </ng-container>
+      </ion-card-content>
+    </ion-card>
+  </div>
+</ion-content>
+`
