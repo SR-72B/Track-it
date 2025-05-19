@@ -1,0 +1,127 @@
+// Style for the form list component
+ion-content {
+  --background: var(--app-background, #f8f9fa);
+}
+
+ion-list {
+  background: transparent;
+  padding: 0;
+}
+
+// Item styling with card-like appearance
+ion-item-sliding {
+  margin-bottom: 12px;
+}
+
+ion-item {
+  --padding-start: 16px;
+  --inner-padding-end: 16px;
+  border-radius: 12px;
+  --background: white;
+  box-shadow: var(--card-shadow, 0 4px 12px rgba(0, 0, 0, 0.05));
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+ion-item:active {
+  --background: var(--ion-color-light);
+  transform: scale(0.98);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+// Typography styling
+ion-item h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+ion-item p {
+  font-size: 14px;
+  color: var(--ion-color-medium);
+  margin: 0;
+}
+
+ion-item p:last-of-type {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+// Badge styling
+ion-badge {
+  padding: 4px 8px;
+  border-radius: 16px;
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+
+// Empty state styling
+.ion-text-center {
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.ion-text-center ion-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  color: var(--ion-color-medium);
+}
+
+.ion-text-center h4 {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--ion-color-dark);
+}
+
+.ion-text-center p {
+  color: var(--ion-color-medium);
+  margin-bottom: 24px;
+  max-width: 300px;
+  text-align: center;
+}
+
+// Loading state
+ion-spinner + p {
+  margin-top: 16px;
+  color: var(--ion-color-medium);
+}
+
+// Animation for list items
+ion-item-sliding {
+  animation: fadeInUp 0.3s ease backwards;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Staggered animation delay for list items
+ion-item-sliding:nth-child(1) { animation-delay: 0.05s; }
+ion-item-sliding:nth-child(2) { animation-delay: 0.1s; }
+ion-item-sliding:nth-child(3) { animation-delay: 0.15s; }
+ion-item-sliding:nth-child(4) { animation-delay: 0.2s; }
+ion-item-sliding:nth-child(5) { animation-delay: 0.25s; }
+
+// Responsive styling
+@media (min-width: 768px) {
+  ion-list {
+    max-width: 800px;
+    margin: 16px auto;
+  }
+  
+  .ion-text-center p {
+    max-width: 400px;
+  }
+}

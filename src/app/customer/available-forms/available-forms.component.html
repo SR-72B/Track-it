@@ -1,0 +1,39 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/customer/dashboard"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Available Order Forms</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-refresher slot="fixed" (ionRefresh)="loadForms(); $event.target.complete()">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <div *ngIf="isLoading" class="ion-text-center ion-padding">
+    <ion-spinner></ion-spinner>
+    <p>Loading available forms...</p>
+  </div>
+
+  <div class="available-forms-container" *ngIf="!isLoading">
+    <ng-container *ngIf="forms$ | async as forms">
+      <ion-list *ngIf="forms.length > 0">
+        <ion-item *ngFor="let form of forms" (click)="openForm(form.id)" detail>
+          <ion-icon name="document-text-outline" slot="start" color="primary"></ion-icon>
+          <ion-label>
+            <h2>{{ form.title }}</h2>
+            <p>{{ form.description || 'No description available' }}</p>
+          </ion-label>
+        </ion-item>
+      </ion-list>
+
+      <div *ngIf="forms.length === 0" class="ion-text-center ion-padding">
+        <ion-icon name="document-text-outline" size="large" color="medium"></ion-icon>
+        <h4>No Forms Available</h4>
+        <p>There are no order forms available at this time. Please check back later.</p>
+      </div>
+    </ng-container>
+  </div>
+</ion-content>

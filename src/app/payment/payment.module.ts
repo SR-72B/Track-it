@@ -6,7 +6,7 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { RouterModule, Routes } from '@angular/router';
 
 import { SubscriptionComponent } from './subscription/subscription.component';
-import { SubscriptionDetailsComponent } from './subscription-details/subscription-details.component';
+import { SubscriptionDetailsComponent } from './subscription/subscription-details.component';
 
 const routes: Routes = [
   { path: 'subscription', component: SubscriptionComponent },

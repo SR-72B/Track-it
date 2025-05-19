@@ -1,0 +1,29 @@
+<!-- src/app/retailer/order-management/order-management.component.html --> <ion-header> <ion-toolbar color="primary"> <ion-buttons slot="start"> <ion-menu-button></ion-menu-button> </ion-buttons> <ion-title>Order Management</ion-title> </ion-toolbar> <ion-toolbar> <ion-segment [value]="activeFilter" (ionChange)="filterOrders($event)"> <ion-segment-button value="all"> <ion-label>All</ion-label> </ion-segment-button> <ion-segment-button value="pending"> <ion-label>Pending</ion-label> </ion-segment-button> <ion-segment-button value="processing"> <ion-label>Processing</ion-label> </ion-segment-button> <ion-segment-button value="shipped"> <ion-label>Shipped</ion-label> </ion-segment-button> <ion-segment-button value="delivered"> <ion-label>Delivered</ion-label> </ion-segment-button> </ion-segment> </ion-toolbar> <ion-toolbar> <ion-searchbar [(ngModel)]="searchTerm" (ionChange)="searchOrders()" placeholder="Search by order ID or customer name"></ion-searchbar> </ion-toolbar> </ion-header> <ion-content> <ion-refresher slot="fixed" (ionRefresh)="refreshOrders($event)"> <ion-refresher-content></ion-refresher-content> </ion-refresher> <!-- Loading spinner --> <div *ngIf="isLoading" class="loading-container"> <ion-spinner></ion-spinner> <p>Loading orders...</p> </div> <!-- Orders list -->
+<ng-container *ngIf="!isLoading"> <ion-list *ngIf="filteredOrders.length > 0"> <ion-item-sliding *ngFor="let order of filteredOrders"> <ion-item (click)="viewOrderDetails(order.id)"> <ion-label> <h2>Order #{{ order.id.substring(0, 8) }}</h2> <h3>{{ order.customerName }}</h3> <p>{{ formatDate(order.createdAt) }}</p> <p *ngIf="order.purchaseOrder">PO: {{ order.purchaseOrder }}</p> </ion-label> <ion-badge slot="end" [color]="getStatusColor(order.status)"> {{ order.status | uppercase }} </ion-badge> </ion-item>
+
+    <ion-item-options side="end">
+      <ion-item-option color="primary" (click)="updateOrderStatus(order); $event.stopPropagation()">
+        <ion-icon slot="icon-only" name="create-outline"></ion-icon>
+        Update
+      </ion-item-option>
+      <ion-item-option color="secondary" (click)="communicateWithCustomer(order); $event.stopPropagation()">
+        <ion-icon slot="icon-only" name="chatbubble-outline"></ion-icon>
+        Message
+      </ion-item-option>
+      <ion-item-option color="danger" (click)="cancelOrder(order); $event.stopPropagation()">
+        <ion-icon slot="icon-only" name="close-circle-outline"></ion-icon>
+        Cancel
+      </ion-item-option>
+    </ion-item-options>
+  </ion-item-sliding>
+</ion-list>
+
+<!-- Empty state -->
+<div *ngIf="filteredOrders.length === 0" class="empty-state">
+  <ion-icon name="cart-outline" size="large"></ion-icon>
+  <h3>No Orders Found</h3>
+  <p *ngIf="activeFilter === 'all' && !searchTerm">You haven't received any orders yet.</p>
+  <p *ngIf="activeFilter !== 'all' && !searchTerm">You don't have any {{ activeFilter }} orders.</p>
+  <p *ngIf="searchTerm">No orders matching "{{ searchTerm }}".</p>
+</div>
+</ng-container> <!-- FAB for order management actions --> <ion-fab vertical="bottom" horizontal="end" slot="fixed"> <ion-fab-button> <ion-icon name="options-outline"></ion-icon> </ion-fab-button> <ion-fab-list side="top"> <ion-fab-button color="light" (click)="exportOrders()"> <ion-icon name="download-outline"></ion-icon> </ion-fab-button> <ion-fab-button color="light" (click)="refreshOrderStatistics()"> <ion-icon name="stats-chart-outline"></ion-icon> </ion-fab-button> <ion-fab-button color="light" (click)="viewOrderAnalytics()"> <ion-icon name="analytics-outline"></ion-icon> </ion-fab-button> </ion-fab-list> </ion-fab> </ion-content>

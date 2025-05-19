@@ -1,0 +1,28 @@
+/* src/app/retailer/order-management/order-management.component.scss */ .loading-container { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px 24px; text-align: center; }
+
+.loading-container ion-spinner { margin-bottom: 16px; }
+
+ion-item { --padding-start: 16px; --inner-padding-end: 16px; --background: transparent; cursor: pointer; transition: background-color 0.2s ease; }
+
+ion-item:active { --background: var(--ion-color-light); }
+
+ion-item h2 { font-weight: 600; margin-bottom: 4px; }
+
+ion-item h3 { font-size: 14px; margin-bottom: 2px; }
+
+ion-item p { color: var(--ion-color-medium); font-size: 12px; margin: 0; }
+
+ion-badge { --padding-start: 8px; --padding-end: 8px; --padding-top: 4px; --padding-bottom: 4px; }
+
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px 24px; text-align: center; }
+
+.empty-state ion-icon { font-size: 64px; color: var(--ion-color-medium); margin-bottom: 16px; }
+
+.empty-state h3 { font-size: 20px; font-weight: 600; margin-bottom: 8px; color: var(--ion-color-dark); }
+
+.empty-state p { color: var(--ion-color-medium); margin-bottom: 24px; max-width: 280px; }
+
+@media (min-width: 768px) { ion-content { --background: var(--app-background); }
+
+ion-list { background: white; border-radius: 16px; margin: 16px; overflow: hidden; } }
+

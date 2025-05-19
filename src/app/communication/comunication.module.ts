@@ -8,7 +8,7 @@ import { RouterModule, Routes } from '@angular/router';
 import { ChatListComponent } from './chat/chat-list.component';
 import { ChatDetailComponent } from './chat/chat-detail.component';
 import { VideoCallComponent } from './video-call/video-call.component';
-import { NotificationsComponent } from './notifications/notifications.component';
+import { NotificationsComponent } from './notifications/notifications.component.ts';
 
 const routes: Routes = [
   { path: 'chats', component: ChatListComponent },
