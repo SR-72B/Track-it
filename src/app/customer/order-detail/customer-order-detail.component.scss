@@ -1,4 +1,7 @@
 // customer-order-detail.scss
+@use "sass:math"; // Add this for math.div()
+@use "sass:color"; // Add this for color.adjust()
+
 // Main styles for customer order detail page
 
 // Variables
@@ -20,16 +23,16 @@ $box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   align-items: center;
 }
 
-@mixin status-badge($color) {
+@mixin status-badge($color-value) { // Renamed parameter to avoid conflict with 'color' module
   display: inline-block;
   padding: 4px 8px;
   border-radius: 12px;
   font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
-  background-color: rgba($color, 0.1);
-  color: $color;
-  border: 1px solid rgba($color, 0.2);
+  background-color: rgba($color-value, 0.1);
+  color: $color-value;
+  border: 1px solid rgba($color-value, 0.2);
 }
 
 // Container
@@ -39,7 +42,7 @@ $box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   padding: $spacing-unit;
   
   @media (max-width: 768px) {
-    padding: $spacing-unit / 2;
+    padding: math.div($spacing-unit, 2); // Fixed division
   }
 }
 
@@ -70,7 +73,7 @@ $box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     @include flex-center;
     
     .btn {
-      margin-left: $spacing-unit / 2;
+      margin-left: math.div($spacing-unit, 2); // Fixed division
     }
   }
 }
@@ -148,7 +151,7 @@ $box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       &::before {
         content: '';
         position: absolute;
-        left: -$spacing-unit * 2 + 4px;
+        left: -$spacing-unit * 2 + 4px; // SCSS allows calculations here
         top: 4px;
         width: 10px;
         height: 10px;
@@ -265,7 +268,7 @@ $box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: $spacing-unit / 2 $spacing-unit;
+        padding: math.div($spacing-unit, 2) $spacing-unit; // Fixed division
         text-align: right;
         
         &:before {
@@ -375,7 +378,7 @@ $box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       width: 40px;
       height: 25px;
       margin-right: $spacing-unit;
-      background-color: #f0f0f0;
+      background-color: #f0f0f0; // Consider making this a variable if used elsewhere
       border-radius: 4px;
     }
     
@@ -417,7 +420,7 @@ $box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     color: white;
     
     &:hover {
-      background-color: darken($primary-color, 10%);
+      background-color: color.adjust($primary-color, $lightness: -10%); // Fixed darken
     }
   }
   
@@ -436,7 +439,7 @@ $box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     color: white;
     
     &:hover {
-      background-color: darken($success-color, 10%);
+      background-color: color.adjust($success-color, $lightness: -10%); // Fixed darken
     }
   }
   
@@ -445,7 +448,7 @@ $box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     color: white;
     
     &:hover {
-      background-color: darken($danger-color, 10%);
+      background-color: color.adjust($danger-color, $lightness: -10%); // Fixed darken
     }
   }
   

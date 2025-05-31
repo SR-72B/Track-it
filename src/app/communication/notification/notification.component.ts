@@ -1,34 +1,31 @@
 // src/app/communication/notifications/notifications.component.ts
 import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
-import { LoadingController } from '@ionic/angular';
-import { Observable, of } from 'rxjs'; // Added 'of' for potential fallback
-import { finalize, first, catchError } from 'rxjs/operators'; // Added 'first' and 'catchError'
+import { Router, RouterModule } from '@angular/router'; // RouterModule added
+import { LoadingController, IonicModule } from '@ionic/angular'; // IonicModule added
+import { Observable, of } from 'rxjs';
+import { finalize, first, catchError } from 'rxjs/operators';
+import { CommonModule } from '@angular/common'; // CommonModule added
+
 import { AuthService } from '../../auth/auth.service'; // Assuming this path is correct
 import { CommunicationService, Notification } from '../communication.service'; // Assuming this path is correct
 
-// Define a simple User interface.
-// Ideally, this (or a more complete version) should come from your auth models or a shared types file.
+// Define a simple User interface if not globally available
+// This might already be defined in your AuthService or a shared models file
 export interface User {
   uid: string;
   // other potential user properties like email, displayName, etc.
 }
 
-// Define or import your Notification interface if not already done in communication.service
-// export interface Notification {
-//   id: string;
-//   type: 'message' | 'call' | 'order' | 'status' | string; // Add other types as needed
-//   relatedId?: string;
-//   message: string;
-//   date: any; // Consider using a more specific type like Date or a Firestore Timestamp
-//   read: boolean;
-//   // other notification properties
-// }
-
 @Component({
   selector: 'app-notifications',
-  templateUrl: './notifications.component.html',
-  styleUrls: ['./notifications.component.scss']
+  templateUrl: './notifications.component.html', // Ensure this file exists
+  styleUrls: ['./notifications.component.scss'],   // Ensure this file exists
+  standalone: true, // Mark component as standalone
+  imports: [
+    CommonModule,     // For *ngIf, *ngFor, async pipe, etc.
+    IonicModule,      // For Ionic components (ion-list, ion-item, ion-spinner, ion-icon, etc.) and services
+    RouterModule      // For routerLink (if used in the template)
+  ]
 })
 export class NotificationsComponent implements OnInit {
   notifications$: Observable<Notification[]>;
@@ -49,14 +46,19 @@ export class NotificationsComponent implements OnInit {
     this.loadNotifications();
   }
 
-  async loadNotifications() {
+  async loadNotifications(event?: any) { // Added event parameter for ion-refresher
     this.isLoading = true;
     this.errorMessage = null;
-    const loading = await this.loadingController.create({
-      message: 'Loading notifications...',
-      spinner: 'crescent'
-    });
-    await loading.present();
+    let loading: HTMLIonLoadingElement | undefined;
+
+    // Only show loader if not triggered by refresher
+    if (!event) {
+      loading = await this.loadingController.create({
+        message: 'Loading notifications...',
+        spinner: 'crescent'
+      });
+      await loading.present();
+    }
 
     this.authService.currentUser$.pipe(
       first(), // Take the first emitted value and complete
@@ -66,58 +68,59 @@ export class NotificationsComponent implements OnInit {
         return of(null); // Return a null user so the flow can continue to finalize
       })
     ).subscribe(user => {
+      const dismissLoader = () => {
+        this.isLoading = false;
+        if (loading) {
+          loading.dismiss().catch(e => console.warn('Error dismissing loading:', e));
+        }
+        if (event) {
+          event.target.complete(); // Complete ion-refresher animation
+        }
+      };
+
       if (user) {
-        // If currentUser$ is properly typed in AuthService (e.g., Observable<User | null>),
-        // the 'as User' assertion might not be needed if 'user' is not null.
         const knownUser = user as User; // Type assertion
-        if (knownUser.uid) {
+        if (knownUser && knownUser.uid) { // Added check for knownUser as well
           this.notifications$ = this.communicationService.getNotifications(knownUser.uid).pipe(
             finalize(() => {
-              this.isLoading = false;
-              loading.dismiss().catch(e => console.warn('Error dismissing loading while notifications loaded:', e));
+              dismissLoader();
             }),
             catchError(err => {
               console.error('Error loading notifications:', err);
               this.errorMessage = 'Failed to load notifications.';
-              this.isLoading = false;
-              loading.dismiss().catch(e => console.warn('Error dismissing loading on notification error:', e));
+              dismissLoader();
               return of([]); // Return empty array on error
             })
           );
         } else {
-            console.warn('User object received, but UID is missing.');
-            this.isLoading = false;
-            this.errorMessage = 'User identifier is missing.';
-            loading.dismiss().catch(e => console.warn('Error dismissing loading (UID missing):', e));
-            this.notifications$ = of([]);
+          console.warn('User object received, but UID is missing.');
+          this.errorMessage = 'User identifier is missing.';
+          this.notifications$ = of([]);
+          dismissLoader();
         }
       } else {
-        // Handle case where user is null (e.g., not logged in or error fetching user)
-        this.isLoading = false;
-        if (!this.errorMessage) { // Don't overwrite specific error from currentUser$ catchError
-            this.errorMessage = 'No user logged in to load notifications.';
+        if (!this.errorMessage) {
+          this.errorMessage = 'No user logged in to load notifications.';
         }
-        loading.dismiss().catch(e => console.warn('Error dismissing loading (no user):', e));
-        this.notifications$ = of([]); // Set to empty observable
+        this.notifications$ = of([]);
+        dismissLoader();
       }
     });
   }
 
   handleNotification(notification: Notification) {
     if (!notification || !notification.id) {
-        console.error('Invalid notification object received by handleNotification:', notification);
-        return;
+      console.error('Invalid notification object received by handleNotification:', notification);
+      return;
     }
 
-    // Mark notification as read
     this.communicationService.markNotificationAsRead(notification.id).pipe(
-        first() // Ensure the subscription completes
+      first()
     ).subscribe({
       next: () => console.log(`Notification ${notification.id} marked as read.`),
       error: (err) => console.error(`Error marking notification ${notification.id} as read:`, err)
     });
 
-    // Navigate based on notification type
     if (notification.type === 'message' && notification.relatedId) {
       this.router.navigate(['/communication/chat', notification.relatedId]);
     } else if (notification.type === 'call' && notification.relatedId) {
@@ -131,41 +134,36 @@ export class NotificationsComponent implements OnInit {
         }
       });
     } else {
-        console.log(`Unhandled notification type: ${notification.type} or missing relatedId.`);
-        // Optionally navigate to a general notifications page or do nothing
+      console.log(`Unhandled notification type: ${notification.type} or missing relatedId.`);
     }
   }
 
   formatTime(dateInput: any): string {
     if (!dateInput) return 'No date';
-
     let date: Date;
 
-    // Check if it's a Firebase Timestamp object
     if (dateInput && typeof dateInput.toDate === 'function') {
       date = dateInput.toDate();
-    }
-    // Check if it's already a Date object
-    else if (dateInput instanceof Date) {
+    } else if (dateInput instanceof Date) {
       date = dateInput;
-    }
-    // Try to parse it if it's a string or number
-    else {
-      date = new Date(dateInput);
+    } else {
+      try {
+        date = new Date(dateInput);
+        if (isNaN(date.getTime())) throw new Error('Invalid date string/number');
+      } catch (e) {
+        console.warn('Could not parse dateInput:', dateInput, e);
+        return 'Invalid date';
+      }
     }
 
-    // Check if the date is valid
     if (isNaN(date.getTime())) {
       return 'Invalid date';
     }
-
-    // Format to a user-friendly time string, e.g., "3:45 PM"
     return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
   }
 
-  // Optional: Add a refresh function callable from the template
-  refreshNotifications() {
-    this.loadNotifications();
+  // For ion-refresher
+  doRefresh(event: any) {
+    this.loadNotifications(event);
   }
-
-} // Closing brace for the NotificationsComponent class
+}
