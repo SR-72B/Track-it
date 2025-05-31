@@ -1,32 +1,37 @@
 // src/app/customer/order-form/customer-order-form.component.ts
-import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
-import { FormBuilder, FormGroup, FormControl, Validators } from '@angular/forms';
-import { LoadingController, AlertController, ToastController } from '@ionic/angular';
-import { CustomerOrderService } from '../order/customer-order.service';
-import { OrderForm } from '../../retailer/form-builder/form-builder.service'; // Ensure this path is correct
-import { Observable } from 'rxjs';
-// It's good practice to also import 'firstValueFrom' or 'take' if you intend to only get one value from an observable
-// import { firstValueFrom } from 'rxjs';
-// Or for specific error handling:
-// import { catchError } from 'rxjs/operators';
-// import { of } from 'rxjs';
+import { Component, OnInit, OnDestroy } from '@angular/core'; // Added OnDestroy
+import { ActivatedRoute, Router, RouterModule } from '@angular/router'; // Added RouterModule
+import { FormBuilder, FormGroup, FormControl, Validators, ReactiveFormsModule } from '@angular/forms'; // Added ReactiveFormsModule
+import { LoadingController, AlertController, ToastController, IonicModule } from '@ionic/angular'; // Added IonicModule
+import { CommonModule } from '@angular/common'; // Added CommonModule
 
+import { CustomerOrderService } from '../order/customer-order.service';
+import { OrderForm, FormField } from '../../retailer/form-builder/form-builder.service'; // Ensure path and FormField export are correct
+import { Observable, Subscription, firstValueFrom, of } from 'rxjs'; // Added Subscription, firstValueFrom, of
+import { catchError, finalize } from 'rxjs/operators'; // Added catchError, finalize
 
 @Component({
   selector: 'app-customer-order-form',
-  templateUrl: './customer-order-form.component.html',
-  styleUrls: ['./customer-order-form.component.scss']
+  templateUrl: './customer-order-form.component.html', // Ensure this file exists
+  styleUrls: ['./customer-order-form.component.scss'],   // Ensure this file exists
+  standalone: true, // Mark component as standalone
+  imports: [
+    CommonModule,          // For *ngIf, *ngFor, etc.
+    IonicModule,           // For Ionic components and services
+    ReactiveFormsModule,   // For FormGroup, FormControl, FormBuilder
+    RouterModule           // For routerLink (if used in the template)
+  ]
 })
-export class CustomerOrderFormComponent implements OnInit {
-  formId: string;
-  // Consider if orderForm$ is truly needed if you're immediately subscribing and storing in this.orderForm
-  orderForm$: Observable<OrderForm | undefined>; // It's good practice to allow undefined if the form might not exist
-  orderForm: OrderForm | undefined; // And type this accordingly
+export class CustomerOrderFormComponent implements OnInit, OnDestroy {
+  formId: string | null = null; // Initialize to null
+  orderForm: OrderForm | undefined;
   dynamicForm: FormGroup;
   selectedFiles: File[] = [];
   isLoading = true;
   isSubmitting = false;
+  errorMessage: string | null = null;
+
+  private routeSubscription: Subscription | undefined;
 
   constructor(
     private route: ActivatedRoute,
@@ -41,62 +46,79 @@ export class CustomerOrderFormComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.route.params.subscribe(params => {
-      this.formId = params['id'];
-      if (this.formId) {
+    this.routeSubscription = this.route.params.subscribe(params => {
+      const id = params['id'];
+      if (id) {
+        this.formId = id;
         this.loadOrderForm();
       } else {
         this.isLoading = false;
-        this.showError('Form ID is missing.');
-        // Optionally, navigate away or show a more permanent error state
+        this.errorMessage = 'Form ID is missing. Cannot load form.';
+        this.showToast(this.errorMessage, 'danger');
+        // Optionally, navigate away
+        // this.router.navigate(['/customer/forms']);
       }
     });
   }
 
   async loadOrderForm() {
-    this.isLoading = true; // Ensure isLoading is true at the start
+    if (!this.formId) {
+      this.isLoading = false;
+      this.errorMessage = 'Cannot load form: Form ID is not available.';
+      console.error(this.errorMessage);
+      return;
+    }
+
+    this.isLoading = true;
+    this.errorMessage = null;
     const loading = await this.loadingController.create({
       message: 'Loading form...',
       spinner: 'crescent'
     });
     await loading.present();
 
-    // Using a local variable for the subscription can be cleaner
-    this.customerOrderService.getOrderForm(this.formId).subscribe(
-      (form: OrderForm | undefined) => {
-        if (form) {
-          this.orderForm = form;
-          this.createDynamicForm(form);
-        } else {
-          // Handle case where form is not found
-          this.orderForm = undefined;
-          this.showError('Form not found.');
-          // Potentially navigate back or disable the form
-          this.dynamicForm = this.fb.group({}); // Reset or disable form
+    try {
+      const form = await firstValueFrom(
+        this.customerOrderService.getOrderForm(this.formId).pipe(
+          catchError(err => {
+            console.error('Error fetching order form:', err);
+            this.errorMessage = `Error loading form: ${err.message || 'Unknown error'}`;
+            return of(undefined); // Propagate undefined to handle in the success path
+          })
+        )
+      );
+
+      if (form) {
+        this.orderForm = form;
+        this.createDynamicForm(form);
+      } else {
+        this.orderForm = undefined;
+        if (!this.errorMessage) { // If catchError didn't set a specific message
+            this.errorMessage = 'Form not found or could not be loaded.';
         }
-        loading.dismiss();
-        this.isLoading = false;
-      },
-      (error: any) => { // It's good to type 'error' if you know its structure, otherwise 'any'
-        loading.dismiss();
-        this.isLoading = false;
-        this.showError('Error loading form: ' + (error.message || 'Unknown error'));
-        // Potentially navigate back
+        this.showToast(this.errorMessage, 'danger');
+        this.dynamicForm = this.fb.group({}); // Reset form
       }
-    );
+    } catch (error: any) { // Catch errors from firstValueFrom if observable errors without emitting
+      console.error('Unexpected error in loadOrderForm:', error);
+      this.errorMessage = `Failed to load form data: ${error.message || 'Unknown error'}`;
+      this.showToast(this.errorMessage, 'danger');
+    } finally {
+      this.isLoading = false;
+      await loading.dismiss().catch(e => console.warn('Error dismissing loading:', e));
+    }
   }
 
   createDynamicForm(form: OrderForm) {
     const formControls: {[key: string]: FormControl} = {};
     
-    // Add PO field (consider if this should always be present or based on form config)
+    // Add PO field (Make this conditional based on form settings if needed)
     formControls['purchaseOrder'] = new FormControl('');
     
-    // Add dynamic fields based on form definition
     if (form && form.fields) {
-      form.fields.forEach(field => {
-        // Use field.id or a unique key if field.label can have duplicates or special characters
-        formControls[field.id || field.label] = new FormControl(
+      form.fields.forEach((field: FormField) => { // Assuming FormField is imported or defined
+        const controlName = field.id || field.label.replace(/\s+/g, '-').toLowerCase(); // Create a more robust control name
+        formControls[controlName] = new FormControl(
           field.defaultValue || '', 
           field.required ? Validators.required : null
         );
@@ -108,24 +130,40 @@ export class CustomerOrderFormComponent implements OnInit {
 
   onFileSelected(event: any) {
     const files: FileList = event.target.files;
-    if (files && this.orderForm) { // Ensure orderForm is defined
-      // Check file types
-      const allowedTypesExtensions = this.orderForm.allowedFileTypes || []; // Default to empty array if undefined
-      
+    if (files && this.orderForm) {
+      const allowedTypesExtensions = this.orderForm.allowedFileTypes || [];
+      const maxFiles = 5; // Example: Set a maximum number of files
+      const maxFileSizeMB = 10; // Example: Max 10MB per file
+
+      if (this.selectedFiles.length + files.length > maxFiles) {
+        this.showToast(`You can upload a maximum of ${maxFiles} files.`, 'warning');
+        if (event.target) event.target.value = null; // Reset file input
+        return;
+      }
+
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const fileExtension = file.name.split('.').pop()?.toLowerCase(); // Use optional chaining
+        const fileExtension = file.name.split('.').pop()?.toLowerCase();
+
+        if (file.size > maxFileSizeMB * 1024 * 1024) {
+            this.showToast(`File "${file.name}" is too large (max ${maxFileSizeMB}MB).`, 'warning');
+            continue; // Skip this file
+        }
         
         if (fileExtension && allowedTypesExtensions.includes(fileExtension)) {
-          this.selectedFiles.push(file);
+          if (this.selectedFiles.length < maxFiles) {
+            this.selectedFiles.push(file);
+          } else {
+            this.showToast(`Maximum ${maxFiles} files reached. "${file.name}" was not added.`, 'warning');
+            break; // Stop processing further files if max is reached
+          }
         } else {
-          this.showError(`File type .${fileExtension || 'unknown'} is not allowed. Allowed types: ${allowedTypesExtensions.map(ext => '.' + ext).join(', ')}`);
+          this.showToast(`File type .${fileExtension || 'unknown'} is not allowed for "${file.name}". Allowed: ${allowedTypesExtensions.map(ext => '.' + ext).join(', ')}`, 'warning');
         }
       }
     }
-    // Reset the file input so the same file can be selected again if removed
     if (event.target) {
-        event.target.value = null;
+      event.target.value = null; // Reset file input to allow selecting the same file again if removed
     }
   }
 
@@ -135,61 +173,68 @@ export class CustomerOrderFormComponent implements OnInit {
 
   async submitOrder() {
     if (!this.orderForm) {
-      this.showError('Form data is not loaded. Cannot submit.');
+      this.showToast('Form data is not loaded. Cannot submit.', 'danger');
       return;
     }
 
-    if (this.dynamicForm.valid) {
-      this.isSubmitting = true;
-      const loading = await this.loadingController.create({
-        message: 'Submitting order...',
-        spinner: 'crescent'
-      });
-      await loading.present();
-
-      try {
-        const formData = this.dynamicForm.value;
-        
-        const orderId = await this.customerOrderService.submitOrder(
-          this.formId, 
-          formData, 
-          this.selectedFiles
-        );
-        
-        await loading.dismiss();
-        this.isSubmitting = false;
-        this.selectedFiles = []; // Clear selected files after successful submission
-
-        const alert = await this.alertController.create({
-          header: 'Order Submitted',
-          message: `Your order (ID: ${orderId}) has been submitted successfully!`,
-          buttons: [
-            {
-              text: 'View Order',
-              handler: () => {
-                this.router.navigate(['/customer/orders', orderId]); // Ensure this route exists
-              }
-            },
-            {
-              text: 'OK',
-              role: 'cancel',
-              handler: () => {
-                this.router.navigate(['/customer/dashboard']); // Or some other appropriate page
-              }
-            }
-          ]
-        });
-        await alert.present();
-        this.dynamicForm.reset(); // Reset form after successful submission
-
-      } catch (error: any) { // Type error if possible
-        await loading.dismiss();
-        this.isSubmitting = false;
-        this.showError('Error submitting order: ' + (error.message || 'Unknown error'));
-      }
-    } else {
+    if (this.dynamicForm.invalid) { // Check for invalid instead of valid for early exit
       this.markFormGroupTouched(this.dynamicForm);
-      this.showError('Please fill in all required fields.');
+      this.showToast('Please fill in all required fields.', 'warning');
+      return;
+    }
+
+    this.isSubmitting = true;
+    const loading = await this.loadingController.create({
+      message: 'Submitting order...',
+      spinner: 'crescent'
+    });
+    await loading.present();
+
+    try {
+      const formData = this.dynamicForm.value;
+      
+      // Ensure formId is not null before submitting
+      if (!this.formId) {
+          throw new Error("Form ID is missing, cannot submit order.");
+      }
+
+      const orderId = await this.customerOrderService.submitOrder(
+        this.formId, 
+        formData, 
+        this.selectedFiles
+      );
+      
+      this.isSubmitting = false;
+      this.selectedFiles = [];
+      this.dynamicForm.reset();
+      await loading.dismiss();
+
+
+      const alert = await this.alertController.create({
+        header: 'Order Submitted',
+        message: `Your order (ID: ${orderId}) has been submitted successfully!`,
+        backdropDismiss: false,
+        buttons: [
+          {
+            text: 'View Order',
+            handler: () => {
+              this.router.navigate(['/customer/orders', orderId]);
+            }
+          },
+          {
+            text: 'Place Another Order',
+            handler: () => {
+              this.router.navigate(['/customer/forms']); // Navigate to forms list
+            }
+          }
+        ]
+      });
+      await alert.present();
+
+    } catch (error: any) {
+      this.isSubmitting = false;
+      await loading.dismiss().catch(e => console.warn('Error dismissing submit loader:', e));
+      this.showErrorAlert('Order Submission Failed', error.message || 'An unknown error occurred while submitting your order.');
     }
   }
 
@@ -202,13 +247,28 @@ export class CustomerOrderFormComponent implements OnInit {
     });
   }
 
-  async showError(message: string) {
+  async showToast(message: string, color: 'success' | 'warning' | 'danger' | string = 'medium', duration: number = 3000) {
     const toast = await this.toastController.create({
       message: message,
-      duration: 3000,
-      color: 'danger',
-      position: 'bottom'
+      duration: duration,
+      color: color,
+      position: 'top' // Changed to top for better visibility with keyboard
     });
     toast.present();
+  }
+
+  async showErrorAlert(header: string, message: string) {
+    const alert = await this.alertController.create({
+        header: header,
+        message: message,
+        buttons: ['OK']
+    });
+    await alert.present();
+  }
+
+  ngOnDestroy() {
+    if (this.routeSubscription) {
+      this.routeSubscription.unsubscribe();
+    }
   }
 }

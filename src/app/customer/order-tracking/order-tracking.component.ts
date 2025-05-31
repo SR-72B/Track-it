@@ -1,186 +1,185 @@
 // src/app/customer/order-tracking/order-tracking.component.ts
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
-import { LoadingController } from '@ionic/angular';
+import { ActivatedRoute, RouterModule } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { LoadingController, IonicModule } from '@ionic/angular';
+
 import { CustomerOrderService } from '../order/customer-order.service';
-import { Order, OrderUpdate } from '../../retailer/order-management/order.service';
-import { Observable, Subscription, combineLatest } from 'rxjs'; // Import combineLatest and Subscription
-import { map, finalize, tap } from 'rxjs/operators';
+import { Order, OrderUpdate } from '../../retailer/order-management/order.service'; // Ensure path is correct
+import { Observable, Subscription, of, firstValueFrom } from 'rxjs';
+import { map, finalize, tap, catchError } from 'rxjs/operators';
 
 @Component({
   selector: 'app-order-tracking',
-  templateUrl: './order-tracking.component.html',
-  styleUrls: ['./order-tracking.component.scss']
+  templateUrl: './order-tracking.component.html', // Ensure this file exists
+  styleUrls: ['./order-tracking.component.scss'],   // Ensure this file exists
+  standalone: true, // Mark component as standalone
+  imports: [
+    CommonModule,     // For *ngIf, *ngFor, async pipe, etc.
+    IonicModule,      // For Ionic components (ion-progress-bar, ion-list, ion-item, ion-icon, ion-spinner etc.)
+    RouterModule      // For routerLink (if used in the template)
+  ]
 })
 export class OrderTrackingComponent implements OnInit, OnDestroy {
-  orderId: string;
-  order$: Observable<Order>;
-  updates$: Observable<OrderUpdate[]>;
+  orderId: string | null = null;
+  order$: Observable<Order | null | undefined> = of(undefined);
+  updates$: Observable<OrderUpdate[]> = of([]);
   isLoading = true;
+  errorMessage: string | null = null;
 
-  // Status steps for the progress bar
   statusSteps = [
     { status: 'pending', label: 'Pending' },
     { status: 'processing', label: 'Processing' },
     { status: 'shipped', label: 'Shipped' },
     { status: 'delivered', label: 'Delivered' }
-    // Note: 'cancelled' is handled as a special case, not a regular step.
+    // 'cancelled' is handled as a special case
   ];
-
   currentStepIndex = 0;
-  private detailsSubscription: Subscription; // To manage subscription
+
+  private routeSubscription: Subscription | undefined;
+  // Removed manual orderSubscription as order$ is intended for async pipe
 
   constructor(
     private route: ActivatedRoute,
     private customerOrderService: CustomerOrderService,
     private loadingController: LoadingController
-  ) { }
+  ) {}
 
   ngOnInit() {
-    this.route.params.subscribe(params => {
+    this.routeSubscription = this.route.params.subscribe(params => {
       const id = params['id'];
       if (id) {
         this.orderId = id;
         this.loadOrderDetails();
       } else {
         console.error('Order ID not found in route parameters for tracking.');
+        this.errorMessage = 'Order ID is missing. Cannot track order.';
         this.isLoading = false;
-        // Optionally navigate away or show an error message
       }
     });
   }
 
-  async loadOrderDetails() {
+  async loadOrderDetails(refresherEvent?: any) {
     if (!this.orderId) {
       this.isLoading = false;
-      console.error('Cannot load order tracking details without an Order ID.');
+      this.errorMessage = 'Cannot load order tracking: Order ID is missing.';
+      if (refresherEvent) refresherEvent.target.complete();
+      console.error(this.errorMessage);
       return;
     }
 
     this.isLoading = true;
-    const loading = await this.loadingController.create({
-      message: 'Loading order tracking details...',
-      spinner: 'crescent',
-      backdropDismiss: false
-    });
-    await loading.present();
+    this.errorMessage = null;
+    let loader: HTMLIonLoadingElement | undefined;
 
-    this.order$ = this.customerOrderService.getOrder(this.orderId);
-    this.updates$ = this.customerOrderService.getOrderUpdates(this.orderId).pipe(
-      map(updates => updates.sort((a, b) => {
-        // Cast to 'any' for runtime check of .seconds, addressing TypeScript compile-time error
-        const dateAInput = a.createdAt as any;
-        const dateBInput = b.createdAt as any;
-
-        // Convert to Date objects for comparison
-        const dateA = new Date(dateAInput?.seconds ? dateAInput.seconds * 1000 : dateAInput);
-        const dateB = new Date(dateBInput?.seconds ? dateBInput.seconds * 1000 : dateBInput);
-        
-        // Handle invalid dates if necessary, though getTime() on invalid date is NaN
-        if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
-            // Decide how to sort if dates are invalid, e.g., push them to end or log error
-            return 0; 
-        }
-        return dateB.getTime() - dateA.getTime(); // Sort by timestamp (descending)
-      }))
-    );
-
-    // Use combineLatest to wait for both order and updates if needed,
-    // or subscribe to order$ first to set currentStepIndex.
-    // Here, we primarily need order$ to determine the current step.
-    if (this.detailsSubscription) {
-        this.detailsSubscription.unsubscribe(); // Unsubscribe from previous subscription if any
+    if (!refresherEvent) {
+      loader = await this.loadingController.create({
+        message: 'Loading order tracking...',
+        spinner: 'crescent',
+      });
+      await loader.present();
     }
 
-    this.detailsSubscription = this.order$.pipe(
+    this.order$ = this.customerOrderService.getOrder(this.orderId).pipe(
       tap(order => {
         if (order) {
-          // Find the index of the current status in the steps
           this.currentStepIndex = this.statusSteps.findIndex(step => step.status === order.status);
-
-          // If order is cancelled, set to a special index (e.g., -1)
           if (order.status === 'cancelled') {
-            this.currentStepIndex = -1; // Indicates a cancelled state for the progress bar
+            this.currentStepIndex = -1; // Special index for cancelled
           }
-          
-          // Mark updates as seen (fire-and-forget, but handle errors if critical)
-          this.customerOrderService.markUpdatesSeen(this.orderId).subscribe({
-            error: err => console.error('Failed to mark updates as seen:', err)
-          });
+          // Mark updates as seen - fire and forget, but log errors
+          if (this.orderId) {
+            firstValueFrom(this.customerOrderService.markUpdatesSeen(this.orderId))
+              .catch(err => console.warn('Failed to mark updates as seen on load:', err));
+          }
+        } else if (!this.errorMessage) {
+            this.errorMessage = "Order not found.";
         }
       }),
-      finalize(async () => { // Ensure loading is dismissed
+      catchError(err => {
+        console.error('Error loading order details:', err);
+        this.errorMessage = 'Failed to load order details. Please try again.';
+        return of(null); // Emit null to indicate error
+      }),
+      finalize(async () => {
         this.isLoading = false;
-        if (loading) {
-          await loading.dismiss();
+        if (loader) {
+          await loader.dismiss().catch(e => console.warn("Error dismissing loader:", e));
+        }
+        if (refresherEvent) {
+          refresherEvent.target.complete();
         }
       })
-    ).subscribe({
-      error: err => {
-        console.error('Error loading order details for tracking:', err);
-        // isLoading and loading dismissal are handled by finalize
-      }
-    });
+    );
+
+    this.updates$ = this.customerOrderService.getOrderUpdates(this.orderId).pipe(
+      map(updates => updates.sort((a, b) => {
+        const dateAInput = a.createdAt as any;
+        const dateBInput = b.createdAt as any;
+        const dateA = new Date(dateAInput?.seconds ? dateAInput.seconds * 1000 : dateAInput);
+        const dateB = new Date(dateBInput?.seconds ? dateBInput.seconds * 1000 : dateBInput);
+        if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) return 0;
+        return dateB.getTime() - dateA.getTime(); // Descending
+      })),
+      catchError(err => {
+        console.error('Error loading order updates:', err);
+        return of([]); // Return empty array on error
+      })
+    );
   }
 
-  /**
-   * Formats a date input into a readable string (Date and Time).
-   * Handles Firebase Timestamps, JavaScript Date objects, and date strings/numbers.
-   * @param dateInput The date to format (can be Firebase Timestamp, Date, string, or number). Typed as 'any' for runtime checks.
-   * @returns A formatted date-time string or a placeholder for invalid/missing dates.
-   */
   formatDate(dateInput: any): string {
     if (!dateInput) return 'N/A';
-
     let d: Date;
-
-    // Case 1: Input is a Firebase Timestamp-like object
     if (dateInput && typeof dateInput.seconds === 'number' && typeof dateInput.nanoseconds === 'number') {
       d = new Date(dateInput.seconds * 1000);
-    }
-    // Case 2: Input is already a JavaScript Date object
-    else if (dateInput instanceof Date) {
+    } else if (dateInput instanceof Date) {
       d = dateInput;
-    }
-    // Case 3: Input is a string or number that can be parsed
-    else {
+    } else {
       d = new Date(dateInput);
     }
-
-    // Validate the created Date object
     if (isNaN(d.getTime())) {
       console.warn('Invalid date input for formatDate in tracking:', dateInput);
       return 'Invalid Date';
     }
-
-    return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
   }
 
-  // Get progress percentage for the status bar
-  getProgressPercentage(): number {
-    if (this.currentStepIndex < 0 || this.currentStepIndex >= this.statusSteps.length) {
-      // Handles 'cancelled' (index -1) or unexpected indices by showing 0 or 100 if delivered
-      if (this.currentStepIndex === this.statusSteps.length -1 && this.statusSteps[this.currentStepIndex]?.status === 'delivered') return 100;
-      return 0; 
+  getProgressPercentage(currentOrder: Order | null | undefined): number {
+    if (!currentOrder || this.currentStepIndex < 0) { // currentStepIndex will be -1 for 'cancelled'
+      // If order is cancelled or no order, show 0%
+      // If order status is 'delivered', it should be 100%
+      if (currentOrder?.status === 'delivered') return 100;
+      return 0;
     }
-    
-    // Calculate progress based on the current step index among defined steps
-    // Example: If 4 steps (indices 0, 1, 2, 3), totalSegments = 3.
-    // Step 0 -> 0%
-    // Step 1 -> 1/3 * 100 = 33.3%
-    // Step 2 -> 2/3 * 100 = 66.6%
-    // Step 3 (Delivered) -> 3/3 * 100 = 100%
+    // If currentStepIndex is out of bounds for statusSteps (should not happen if logic is correct)
+    if (this.currentStepIndex >= this.statusSteps.length) return 0;
+
     const totalSegments = this.statusSteps.length - 1;
-    if (totalSegments <= 0) return 100; // If only one step, it's 100%
+    if (totalSegments <= 0) return 100; // If only one step, consider it 100% (or 0% if not yet that step)
+
+    // If current status is 'delivered', it's 100%
+    if (this.statusSteps[this.currentStepIndex]?.status === 'delivered') {
+        return 100;
+    }
+
+    // Small initial progress for the first step ('pending')
+    if (this.currentStepIndex === 0 && totalSegments > 0) {
+        return 5;
+    }
 
     const progress = (this.currentStepIndex / totalSegments) * 100;
-    return Math.min(progress, 100); // Cap at 100%
+    return Math.min(progress, 100);
+  }
+
+  doRefresh(event: any) {
+    this.loadOrderDetails(event);
   }
 
   ngOnDestroy() {
-    // Unsubscribe to prevent memory leaks when the component is destroyed
-    if (this.detailsSubscription) {
-      this.detailsSubscription.unsubscribe();
+    if (this.routeSubscription) {
+      this.routeSubscription.unsubscribe();
     }
+    // No need to unsubscribe from order$ or updates$ if only used with async pipe in template
   }
 }

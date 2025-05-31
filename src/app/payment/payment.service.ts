@@ -1,30 +1,49 @@
 // src/app/payment/payment.service.ts
 import { Injectable } from '@angular/core';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
-// import { AngularFireFunctions } from '@angular/fire/compat/functions'; // Not used in the provided code, can be removed if not needed elsewhere
-import { AuthService } from '../auth/auth.service';
-import { Observable, from } from 'rxjs';
-import { switchMap, map } from 'rxjs/operators'; // Added 'map' import
+import { AuthService } from '../auth/auth.service'; // Assuming User interface might be here or in a shared model
+import { Observable, from, of, firstValueFrom } from 'rxjs';
+import { switchMap, map, catchError } from 'rxjs/operators';
 
 export interface CardDetails {
-  cardNumber: string;
+  cardNumber: string; // Should ideally be a token from a payment provider
   expiryMonth: string;
   expiryYear: string;
-  cvc: string;
+  cvc: string; // Should NOT be stored
   name: string;
 }
 
+// Interface for available subscription plans
+export interface Plan {
+  id: string; // e.g., 'plan_basic_monthly', 'plan_premium_yearly'
+  name: string; // e.g., 'Basic Monthly', 'Premium Yearly'
+  price: number;
+  currency: string; // e.g., 'USD'
+  interval: 'month' | 'year' | string; // 'month' or 'year'
+  description?: string;
+  features?: string[];
+  userType?: 'retailer' | 'customer' | 'all'; // To filter plans
+  // Add any other relevant plan properties
+}
+
 export interface SubscriptionDetails {
-  id: string;
+  id: string; // Firestore document ID
   userId: string;
-  status: 'active' | 'cancelled' | 'trial' | 'expired' | 'pending_payment'; // Added more statuses for robustness
-  startDate: any; // Use 'any' or a specific Firebase Timestamp type if available, to handle Firestore data
-  endDate: any;   // Use 'any' or a specific Firebase Timestamp type
-  plan: 'retailer' | string; // Allow for other plan types
-  amount: number;
-  paymentMethod: Partial<CardDetails>; // Stores partial card details for security
+  planId: string; // ID of the plan from your 'plans' collection or config
+  planName?: string; // e.g., "Retailer Basic"
+  status: 'active' | 'trialing' | 'past_due' | 'cancelled' | 'unpaid' | 'incomplete' | 'incomplete_expired' | 'ended' | string;
+  startDate: any; // Firestore Timestamp or Date
+  endDate?: any; // End of current billing cycle or trial
+  nextBillingDate?: any; // For recurring subscriptions
+  trialEndDate?: any;
+  price?: number; // Price at the time of subscription/renewal
+  currency?: string;
+  interval?: 'month' | 'year' | string;
+  paymentMethod?: Partial<CardDetails>; // Store only non-sensitive info like last4, brand
   autoRenew: boolean;
-  trialEndDate?: any; // Optional: if there's a trial period
+  // Add other properties like Stripe subscription ID, customer ID, etc.
+  stripeSubscriptionId?: string;
+  stripeCustomerId?: string;
 }
 
 @Injectable({
@@ -33,227 +52,296 @@ export interface SubscriptionDetails {
 export class PaymentService {
   constructor(
     private firestore: AngularFirestore,
-    // private functions: AngularFireFunctions, // Uncomment if you plan to use Cloud Functions
     private authService: AuthService
   ) {}
 
   /**
    * Get subscription details for a user.
-   * Fetches the latest subscription based on the start date.
-   * @param userId The ID of the user.
-   * @returns An Observable of the SubscriptionDetails or null if not found.
+   * Fetches the latest active or trialing subscription.
    */
   getSubscription(userId: string): Observable<SubscriptionDetails | null> {
     return this.firestore
       .collection<SubscriptionDetails>('subscriptions', ref =>
-        ref.where('userId', '==', userId).orderBy('startDate', 'desc').limit(1)
+        ref.where('userId', '==', userId)
+           .where('status', 'in', ['active', 'trialing', 'past_due', 'incomplete']) // Relevant statuses
+           .orderBy('startDate', 'desc')
+           .limit(1)
       )
-      .valueChanges({ idField: 'id' }) // Use idField to get document ID if needed elsewhere, though 'id' is already in your interface
+      .valueChanges({ idField: 'id' })
       .pipe(
-        map(subscriptions => (subscriptions.length > 0 ? subscriptions[0] : null))
+        map(subscriptions => (subscriptions.length > 0 ? subscriptions[0] : null)),
+        catchError(error => {
+          console.error("Error fetching subscription:", error);
+          return of(null);
+        })
       );
   }
 
   /**
+   * Get available subscription plans.
+   * @param userType Filters plans for 'retailer' or 'customer'.
+   */
+  getAvailablePlans(userType: 'retailer' | 'customer'): Observable<Plan[]> {
+    // In a real app, fetch this from a 'plans' collection in Firestore
+    // or a configuration file.
+    const allPlans: Plan[] = [
+      { id: 'retailer_basic_monthly', name: 'Retailer Basic Monthly', price: 29, currency: 'USD', interval: 'month', description: 'Essential features for retailers.', userType: 'retailer' },
+      { id: 'retailer_pro_monthly', name: 'Retailer Pro Monthly', price: 79, currency: 'USD', interval: 'month', description: 'Advanced features and support.', userType: 'retailer' },
+      { id: 'retailer_basic_yearly', name: 'Retailer Basic Yearly', price: 290, currency: 'USD', interval: 'year', description: 'Save with annual billing for essential features.', userType: 'retailer' },
+      // Add more plans as needed
+    ];
+    return of(allPlans.filter(plan => plan.userType === userType || plan.userType === 'all'));
+  }
+
+  /**
+   * Creates a new subscription for a user.
+   * This would typically involve integrating with a payment provider.
+   */
+  createSubscription(userId: string, planId: string): Observable<string | null> {
+    // 1. Fetch plan details (to get price, interval etc.)
+    // 2. Integrate with Stripe/Payment Provider to setup subscription & initial payment
+    // 3. On successful payment, create the subscription document in Firestore.
+
+    // Simplified example:
+    return from(this.getAvailablePlans('retailer').pipe( // Assuming retailer for now
+      map(plans => plans.find(p => p.id === planId)),
+      switchMap(async (planDetails) => {
+        if (!planDetails) {
+          throw new Error(`Plan with ID ${planId} not found.`);
+        }
+
+        const subscriptionId = this.firestore.createId();
+        const now = new Date();
+        const nextBilling = new Date(now);
+        if (planDetails.interval === 'month') {
+          nextBilling.setMonth(now.getMonth() + 1);
+        } else if (planDetails.interval === 'year') {
+          nextBilling.setFullYear(now.getFullYear() + 1);
+        }
+        // Handle trial periods if applicable for new subscriptions from specific plans
+        const trialDays = 0; // Example: planDetails.trialPeriodDays || 0;
+        const trialEndDate = trialDays > 0 ? new Date(now.setDate(now.getDate() + trialDays)) : undefined;
+
+
+        const newSubscription: SubscriptionDetails = {
+          id: subscriptionId,
+          userId,
+          planId,
+          planName: planDetails.name,
+          status: trialDays > 0 ? 'trialing' : 'active',
+          startDate: new Date(), // Firestore server timestamp is better here
+          endDate: trialDays > 0 ? trialEndDate : nextBilling, // For trial, endDate is trial end. For active, it's next billing.
+          nextBillingDate: trialDays > 0 ? undefined : nextBilling, // No next billing during trial if payment is after trial
+          trialEndDate: trialEndDate,
+          price: planDetails.price,
+          currency: planDetails.currency,
+          interval: planDetails.interval,
+          autoRenew: true,
+          // paymentMethod: {} // This would be set after successful payment setup
+          // stripeSubscriptionId: 'stripe_sub_id_from_payment_gateway'
+        };
+
+        await this.firestore.collection('subscriptions').doc(subscriptionId).set(newSubscription);
+        await this.authService.updateProfile(userId, {
+          hasActiveSubscription: true,
+          subscriptionStatus: newSubscription.status,
+          subscriptionEndDate: newSubscription.endDate
+        });
+        return subscriptionId;
+      }),
+      catchError(error => {
+        console.error("Error creating subscription:", error);
+        return of(null); // Return null or throw error
+      })
+    ).toPromise()); // Using toPromise() as firstValueFrom is for observables that emit at least one value
+  }
+
+
+  /**
+   * Updates an existing subscription (e.g., changing plans).
+   */
+  updateSubscription(userId: string, currentSubscriptionId: string, newPlanId: string): Observable<void> {
+    // 1. Fetch new plan details.
+    // 2. Integrate with Stripe/Payment Provider to update the subscription (handle proration etc.).
+    // 3. On success, update the Firestore subscription document.
+
+    // Simplified example:
+    return from(this.getAvailablePlans('retailer').pipe( // Assuming retailer
+      map(plans => plans.find(p => p.id === newPlanId)),
+      switchMap(async (newPlanDetails) => {
+        if (!newPlanDetails) {
+          throw new Error(`New plan with ID ${newPlanId} not found.`);
+        }
+        const now = new Date();
+        const nextBilling = new Date(now);
+         if (newPlanDetails.interval === 'month') {
+          nextBilling.setMonth(now.getMonth() + 1);
+        } else if (newPlanDetails.interval === 'year') {
+          nextBilling.setFullYear(now.getFullYear() + 1);
+        }
+
+        const updates: Partial<SubscriptionDetails> = {
+          planId: newPlanDetails.id,
+          planName: newPlanDetails.name,
+          price: newPlanDetails.price,
+          currency: newPlanDetails.currency,
+          interval: newPlanDetails.interval,
+          status: 'active', // Assuming plan change makes it active
+          startDate: new Date(), // Or keep original start date and log change date
+          endDate: nextBilling, // This would be the new cycle end date
+          nextBillingDate: nextBilling,
+          // autoRenew might change based on new plan
+        };
+        await this.firestore.collection('subscriptions').doc(currentSubscriptionId).update(updates);
+        await this.authService.updateProfile(userId, {
+            subscriptionStatus: 'active',
+            subscriptionEndDate: updates.endDate
+        });
+      })
+    ));
+  }
+
+  /**
    * Cancel a subscription.
-   * Updates the subscription status to 'cancelled' and sets autoRenew to false.
-   * Also updates the user's profile to reflect no active subscription.
-   * @param subscriptionId The ID of the subscription to cancel.
-   * @param userId The ID of the user.
-   * @returns An Observable that completes when the operations are done.
    */
   cancelSubscription(subscriptionId: string, userId: string): Observable<void> {
     if (!subscriptionId || !userId) {
-        console.error('Subscription ID or User ID is missing for cancellation.');
-        return from(Promise.reject(new Error('Subscription ID or User ID is missing.')));
+      return from(Promise.reject(new Error('Subscription ID or User ID is missing.')));
     }
-    return from(
-      this.firestore.collection('subscriptions').doc(subscriptionId).update({
-        status: 'cancelled',
-        autoRenew: false
-        // Optionally, set an 'cancellationDate': new Date()
-      })
-    ).pipe(
+    // In a real app, this would also interact with the payment gateway to cancel recurring billing.
+    const updates = {
+      status: 'cancelled',
+      autoRenew: false,
+      // endDate might remain as the end of the current paid period.
+      // cancellationDate: new Date() // Optionally add a cancellation date
+    };
+    return from(this.firestore.collection('subscriptions').doc(subscriptionId).update(updates)).pipe(
       switchMap(() => {
-        // In a real app, extensive user profile updates related to subscription changes
-        // might be better handled server-side (e.g., via Cloud Functions) for reliability.
-        return from(
-          this.authService.updateProfile(userId, {
-            hasActiveSubscription: false
-            // Consider clearing subscriptionEndDate or setting it to the actual end date
-          })
-        );
+        return from(this.authService.updateProfile(userId, {
+          hasActiveSubscription: false, // Or true until endDate
+          subscriptionStatus: 'cancelled'
+          // subscriptionEndDate could remain to show when access expires
+        }));
+      }),
+      catchError(error => {
+          console.error("Error cancelling subscription:", error);
+          throw error; // Re-throw to be caught by the component
       })
     );
   }
 
   /**
-   * Renew a subscription.
-   * This is a simplified example; real renewals involve payment processing.
-   * @param subscriptionId The ID of the subscription to renew.
-   * @returns An Observable that completes when the update is done.
+   * Process a new subscription (typically initial sign-up with trial).
+   * In a real application, this would involve secure payment gateway integration.
    */
-  renewSubscription(subscriptionId: string): Observable<void> {
-    if (!subscriptionId) {
-        console.error('Subscription ID is missing for renewal.');
-        return from(Promise.reject(new Error('Subscription ID is missing.')));
+  processSubscription(userId: string, cardDetails: CardDetails, planId: string = 'retailer_basic_monthly'): Observable<string | null> {
+    if (!userId || !cardDetails) {
+      return from(Promise.reject(new Error('User ID or Card Details are missing.')));
     }
-    const now = new Date();
-    const nextEndDate = new Date();
-    nextEndDate.setMonth(now.getMonth() + 1); // Example: 1-month renewal
+    // This method is more for an initial signup flow with a trial.
+    // For plan changes or direct subscriptions, use createSubscription or updateSubscription.
 
-    return from(
-      this.firestore.collection('subscriptions').doc(subscriptionId).update({
-        status: 'active',
-        startDate: now, // This should likely be the *original* start date or renewal date
-        endDate: nextEndDate,
-        autoRenew: true // Assuming renewal implies auto-renew is on
-      })
-    );
+    return from(this.getAvailablePlans('retailer').pipe(
+        map(plans => plans.find(p => p.id === planId)),
+        switchMap(async (planDetails) => {
+            if (!planDetails) {
+                throw new Error(`Default plan ${planId} not found for trial.`);
+            }
+            const subscriptionId = this.firestore.createId();
+            const now = new Date();
+            const trialDays = 30; // Example: 30-day trial
+            const trialEndDate = new Date();
+            trialEndDate.setDate(now.getDate() + trialDays);
+
+            const subscription: SubscriptionDetails = {
+              id: subscriptionId,
+              userId: userId,
+              planId: planDetails.id,
+              planName: planDetails.name,
+              status: 'trialing',
+              startDate: now,
+              endDate: trialEndDate, // End of trial period
+              trialEndDate: trialEndDate,
+              price: planDetails.price, // Price that will be charged after trial
+              currency: planDetails.currency,
+              interval: planDetails.interval,
+              paymentMethod: {
+                cardNumber: `**** **** **** ${cardDetails.cardNumber.slice(-4)}`,
+                expiryMonth: cardDetails.expiryMonth,
+                expiryYear: cardDetails.expiryYear,
+                name: cardDetails.name
+              },
+              autoRenew: true
+            };
+            await this.firestore.collection('subscriptions').doc(subscriptionId).set(subscription);
+            await this.authService.updateProfile(userId, {
+              hasActiveSubscription: true, // Or a specific 'hasTrial' flag
+              subscriptionStatus: 'trialing',
+              subscriptionEndDate: trialEndDate
+            });
+            return subscriptionId;
+        }),
+        catchError(error => {
+            console.error("Error processing trial subscription:", error);
+            return of(null);
+        })
+    ).toPromise());
   }
 
-  /**
-   * Check if a credit card number is valid using the Luhn algorithm.
-   * @param cardNumber The credit card number string.
-   * @returns True if the card number is valid, false otherwise.
-   */
+
+  // --- Validation Methods (can be kept or moved to a utility service) ---
   validateCreditCard(cardNumber: string): boolean {
     if (!cardNumber) return false;
-    // Remove any spaces or dashes
     const cleanedCardNumber = cardNumber.replace(/[\s-]/g, '');
-
-    // Check if the card number contains only digits
     if (!/^\d+$/.test(cleanedCardNumber)) return false;
-
-    // Check if the length is valid (typically 13-19 digits)
     if (cleanedCardNumber.length < 13 || cleanedCardNumber.length > 19) return false;
-
-    // Luhn Algorithm Implementation
     let sum = 0;
     let doubled = false;
-
-    // Loop through each digit from right to left
     for (let i = cleanedCardNumber.length - 1; i >= 0; i--) {
       let digit = parseInt(cleanedCardNumber.charAt(i), 10);
-
       if (doubled) {
         digit *= 2;
         if (digit > 9) digit -= 9;
       }
-
       sum += digit;
       doubled = !doubled;
     }
     return sum % 10 === 0;
   }
 
-  /**
-   * Validate CVC code.
-   * @param cvc The CVC string.
-   * @param cardType Optional: The type of card (e.g., 'amex') to determine CVC length.
-   * @returns True if the CVC is valid, false otherwise.
-   */
   validateCVC(cvc: string, cardType: string = 'unknown'): boolean {
     if (!cvc) return false;
     const cleanedCVC = cvc.trim();
-
     if (!/^\d+$/.test(cleanedCVC)) return false;
-
-    // American Express CVC is 4 digits, others are typically 3
     if (cardType.toLowerCase() === 'amex') {
       return cleanedCVC.length === 4;
-    } else {
-      return cleanedCVC.length === 3;
     }
+    return cleanedCVC.length === 3;
   }
 
-  /**
-   * Validate credit card expiry date.
-   * @param month The expiry month (e.g., "01", "12").
-   * @param year The expiry year (e.g., "2025").
-   * @returns True if the expiry date is valid and not in the past, false otherwise.
-   */
   validateExpiry(month: string, year: string): boolean {
     if (!month || !year) return false;
-
     const currentDate = new Date();
-    // Set to the first day of the current month for accurate comparison with expiry month/year
     currentDate.setDate(1); 
     currentDate.setHours(0, 0, 0, 0);
-
-
     const currentYear = currentDate.getFullYear();
-    const currentMonth = currentDate.getMonth() + 1; // JavaScript months are 0-indexed
-
+    const currentMonth = currentDate.getMonth() + 1;
     const expMonth = parseInt(month, 10);
     const expYear = parseInt(year, 10);
-
-    if (isNaN(expMonth) || isNaN(expYear)) return false;
-    if (expMonth < 1 || expMonth > 12) return false;
-
-    // Card expires at the END of the expiry month.
-    // So, if current year is 2025 and current month is May (5),
-    // an expiry of 05/2025 is valid until the end of May 2025.
-    if (expYear < currentYear) return false;
-    if (expYear === currentYear && expMonth < currentMonth) return false;
-
+    if (isNaN(expMonth) || isNaN(expYear) || expMonth < 1 || expMonth > 12) return false;
+    if (expYear < currentYear || (expYear === currentYear && expMonth < currentMonth)) return false;
     return true;
   }
 
-  /**
-   * Process a new subscription.
-   * Simulates creating a subscription record and updating the user's profile.
-   * In a real application, this would involve secure payment gateway integration.
-   * @param userId The ID of the user subscribing.
-   * @param cardDetails The credit card details for the subscription.
-   * @returns An Observable that completes when the operations are done.
-   */
-  processSubscription(userId: string, cardDetails: CardDetails): Observable<any> {
-    if (!userId || !cardDetails) {
-        console.error('User ID or Card Details are missing for processing subscription.');
-        return from(Promise.reject(new Error('User ID or Card Details are missing.')));
-    }
-    // In a real application, this would communicate with a payment gateway (e.g., Stripe, Braintree)
-    // to create a payment method token, charge the card, and set up recurring payments.
-    // For this demo, we'll simulate storing payment method and subscription details.
-
-    const subscriptionId = this.firestore.createId();
-    const now = new Date();
-    const trialEndDate = new Date();
-    trialEndDate.setDate(now.getDate() + 30); // 30-day trial period
-
-    const subscription: SubscriptionDetails = {
-      id: subscriptionId,
-      userId: userId,
-      status: 'trial', // Initial status is 'trial'
-      startDate: now,
-      endDate: trialEndDate, // For a trial, this is the trial end date. For active, it's subscription cycle end.
-      trialEndDate: trialEndDate,
-      plan: 'retailer',
-      amount: 14, // Example: $14/month after trial
-      paymentMethod: {
-        // For security, only store non-sensitive parts like last 4 digits and cardholder name.
-        // The full card details should be tokenized and handled by the payment gateway.
-        cardNumber: `**** **** **** ${cardDetails.cardNumber.slice(-4)}`,
-        expiryMonth: cardDetails.expiryMonth,
-        expiryYear: cardDetails.expiryYear,
-        name: cardDetails.name
-        // CVC should NEVER be stored.
-      },
-      autoRenew: true // Assume auto-renewal is on by default after trial
-    };
-
-    // Store the new subscription in Firestore
-    return from(this.firestore.collection('subscriptions').doc(subscriptionId).set(subscription))
-      .pipe(
-        switchMap(() => {
-          // Update the user's record to reflect their new subscription status
-          return from(this.authService.updateProfile(userId, {
-            hasActiveSubscription: true, // Or 'hasTrial: true'
-            subscriptionStatus: 'trial',
-            subscriptionEndDate: trialEndDate // Store when the current period (trial or paid) ends
-          }));
-        })
-      );
-  }
+  // Method for Stripe Billing Portal (example, requires backend integration)
+  // async getBillingPortalUrl(userId: string): Promise<string | null> {
+  //   try {
+  //     const callable = this.functions.httpsCallable('stripeCreateBillingPortalSession');
+  //     const result = await callable({ customerId: 'cus_xxxx' /* Get Stripe customer ID for user */ }).toPromise();
+  //     return result?.url || null;
+  //   } catch (error) {
+  //     console.error('Error creating billing portal session:', error);
+  //     return null;
+  //   }
+  // }
 }

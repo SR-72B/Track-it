@@ -1,23 +1,32 @@
 // src/app/retailer/dashboard/dashboard.component.ts
-import { Component, OnInit, OnDestroy } from '@angular/core';
-import { Router } from '@angular/router';
-import { Observable, Subscription, combineLatest, of } from 'rxjs'; // Added Subscription, combineLatest, of
-import { map, first, finalize, switchMap, catchError, tap } from 'rxjs/operators'; // Added first, finalize, switchMap, catchError, tap
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Router, RouterModule } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { IonicModule, LoadingController } from '@ionic/angular';
+
+import { Observable, Subscription, combineLatest, of, firstValueFrom } from 'rxjs';
+import { map, first, finalize, switchMap, catchError, tap } from 'rxjs/operators';
+
 import { AuthService, User } from '../../auth/auth.service';
 import { OrderService, Order } from '../order-management/order.service';
 import { FormBuilderService, OrderForm } from '../form-builder/form-builder.service';
-import { LoadingController } from '@ionic/angular'; // Import LoadingController
 
 @Component({
   selector: 'app-dashboard',
   templateUrl: './dashboard.component.html',
-  styleUrls: ['./dashboard.component.scss']
+  styleUrls: ['./dashboard.component.scss'],
+  standalone: true,
+  imports: [
+    CommonModule,
+    IonicModule,
+    RouterModule
+  ]
 })
 export class DashboardComponent implements OnInit, OnDestroy {
-  user$: Observable<User | null>; // This will be directly from authService
-  recentOrders: Order[] = []; // Store recent orders directly
-  activeForms: OrderForm[] = [];  // Store active forms directly
-  orderCounts: {[key: string]: number} = {
+  user$: Observable<User | null>;
+  recentOrders: Order[] = [];
+  activeForms: OrderForm[] = [];
+  orderCounts: { [key: string]: number } = {
     total: 0,
     pending: 0,
     processing: 0,
@@ -26,90 +35,119 @@ export class DashboardComponent implements OnInit, OnDestroy {
     cancelled: 0
   };
   isLoading = true;
-  private dashboardDataSubscription: Subscription;
+  errorMessage: string | null = null;
+
+  private dashboardDataSubscription: Subscription | undefined;
 
   constructor(
     private authService: AuthService,
     private orderService: OrderService,
     private formBuilderService: FormBuilderService,
     private router: Router,
-    private loadingController: LoadingController // Inject LoadingController
-  ) { }
+    private loadingController: LoadingController,
+    private cdr: ChangeDetectorRef
+  ) {
+    this.user$ = this.authService.currentUser$;
+  }
 
   ngOnInit() {
-    this.user$ = this.authService.currentUser$; // Assign user observable
     this.loadDashboardData();
   }
 
-  async loadDashboardData() {
+  async loadDashboardData(refresherEvent?: any) {
     this.isLoading = true;
-    const loading = await this.loadingController.create({
-      message: 'Loading dashboard data...',
-      spinner: 'crescent',
-      backdropDismiss: false
-    });
-    await loading.present();
+    this.errorMessage = null;
+    let loader: HTMLIonLoadingElement | undefined;
 
-    // Unsubscribe from previous subscription if it exists
+    if (!refresherEvent) {
+      loader = await this.loadingController.create({
+        message: 'Loading dashboard data...',
+        spinner: 'crescent',
+        backdropDismiss: false
+      });
+      await loader.present();
+    }
+
     if (this.dashboardDataSubscription) {
       this.dashboardDataSubscription.unsubscribe();
     }
 
     this.dashboardDataSubscription = this.authService.currentUser$.pipe(
-      first(), // Take the first emitted user value and complete
+      first((user): user is User => !!user && !!user.uid),
       switchMap(user => {
-        const typedUser = user as User | null; // Explicitly type user
+        const ordersData$ = this.orderService.getRetailerOrders(user.uid).pipe(
+          tap(orders => {
+            this.orderCounts.total = orders.length;
+            this.orderCounts.pending = orders.filter(o => o.status === 'pending').length;
+            this.orderCounts.processing = orders.filter(o => o.status === 'processing').length;
+            this.orderCounts.shipped = orders.filter(o => o.status === 'shipped').length;
+            this.orderCounts.delivered = orders.filter(o => o.status === 'delivered').length;
+            this.orderCounts.cancelled = orders.filter(o => o.status === 'cancelled').length;
+            this.cdr.detectChanges();
+          }),
+          map(orders => orders.sort((a, b) => {
+            // Helper function to get milliseconds from various date formats
+            const getMs = (timestamp: any): number => {
+              if (!timestamp) return 0;
+              // If it's already a Date object
+              if (timestamp instanceof Date) {
+                return timestamp.getTime();
+              }
+              // If it's a Firestore Timestamp-like object (has seconds property)
+              if (typeof (timestamp as any).seconds === 'number') {
+                return new Date((timestamp as any).seconds * 1000 + ((timestamp as any).nanoseconds || 0) / 1000000).getTime();
+              }
+              // Try to parse if it's a string or number date
+              const d = new Date(timestamp);
+              return isNaN(d.getTime()) ? 0 : d.getTime();
+            };
 
-        if (typedUser && typedUser.uid) {
-          // Define observables for orders and forms
-          const ordersData$ = this.orderService.getRetailerOrders(typedUser.uid).pipe(
-            tap(orders => { // Use tap for side effects like calculating counts
-              this.orderCounts.total = orders.length;
-              this.orderCounts.pending = orders.filter(o => o.status === 'pending').length;
-              this.orderCounts.processing = orders.filter(o => o.status === 'processing').length;
-              this.orderCounts.shipped = orders.filter(o => o.status === 'shipped').length;
-              this.orderCounts.delivered = orders.filter(o => o.status === 'delivered').length;
-              this.orderCounts.cancelled = orders.filter(o => o.status === 'cancelled').length;
-            }),
-            map(orders => orders.slice(0, 5)), // Get only the 5 most recent orders for display
-            catchError(err => {
-              console.error('Error loading recent orders:', err);
-              return of([]); // Return empty array on error
-            })
-          );
+            const timeA = getMs(a.createdAt);
+            const timeB = getMs(b.createdAt);
+            return timeB - timeA; // Descending sort for most recent first
+          }).slice(0, 5)),
+          catchError(err => {
+            console.error('Error loading recent orders:', err);
+            this.errorMessage = 'Failed to load recent orders.';
+            return of([]);
+          })
+        );
 
-          const formsData$ = this.formBuilderService.getRetailerForms(typedUser.uid).pipe(
-            map((forms: OrderForm[]) => forms.filter(form => form.active).slice(0, 3)), // Ensure forms is typed
-            catchError(err => {
-              console.error('Error loading active forms:', err);
-              return of([]); // Return empty array on error
-            })
-          );
-
-          // Use combineLatest to wait for both observables to emit
-          return combineLatest([ordersData$, formsData$]);
-        } else {
-          console.warn('User not logged in or UID missing for dashboard.');
-          return of([[], []] as [Order[], OrderForm[]]); // Return observables of empty arrays
-        }
+        const formsData$ = this.formBuilderService.getRetailerForms(user.uid).pipe(
+          map((forms: OrderForm[]) => forms.filter(form => form.active).slice(0, 3)),
+          catchError(err => {
+            console.error('Error loading active forms:', err);
+            if (!this.errorMessage) this.errorMessage = 'Failed to load active forms.';
+            return of([]);
+          })
+        );
+        return combineLatest([ordersData$, formsData$]);
+      }),
+      catchError(userError => {
+        console.error('Error fetching user for dashboard:', userError);
+        this.errorMessage = 'Could not load user data for the dashboard.';
+        return of([[], []] as [Order[], OrderForm[]]);
       }),
       finalize(async () => {
         this.isLoading = false;
-        if (loading) {
-          await loading.dismiss();
+        if (loader) {
+          await loader.dismiss().catch(e => console.warn("Loader dismiss error", e));
         }
+        if (refresherEvent) {
+          refresherEvent.target.complete();
+        }
+        this.cdr.detectChanges();
       })
     ).subscribe(
       ([orders, forms]) => {
         this.recentOrders = orders;
         this.activeForms = forms;
-        // isLoading is handled by finalize
       },
-      error => {
-        console.error('Error loading dashboard data:', error);
-        this.recentOrders = []; // Reset on error
-        this.activeForms = [];  // Reset on error
-        // isLoading is handled by finalize
+      (error) => {
+        console.error('Critical error loading dashboard data:', error);
+        this.errorMessage = 'An unexpected error occurred while loading dashboard data.';
+        this.recentOrders = [];
+        this.activeForms = [];
       }
     );
   }
@@ -118,9 +156,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.router.navigate(['/retailer/orders']);
   }
 
-  viewOrder(orderId: string) {
+  viewOrder(orderId: string | undefined) {
     if (orderId) {
       this.router.navigate(['/retailer/orders', orderId]);
+    } else {
+        console.warn('View order called with undefined orderId');
     }
   }
 
@@ -128,9 +168,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.router.navigate(['/retailer/forms']);
   }
 
-  editForm(formId: string) {
+  editForm(formId: string | undefined) {
     if (formId) {
       this.router.navigate(['/retailer/forms/edit', formId]);
+    } else {
+        console.warn('Edit form called with undefined formId');
     }
   }
 
@@ -138,41 +180,42 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.router.navigate(['/retailer/forms/create']);
   }
 
-  /**
-   * Formats a date input into a readable string (Date part only).
-   * Handles Firebase Timestamps, JavaScript Date objects, and date strings/numbers.
-   * @param dateInput The date to format.
-   * @returns A formatted date string or a placeholder for invalid/missing dates.
-   */
   formatDate(dateInput: any): string {
     if (!dateInput) return 'N/A';
-
     let d: Date;
-    // Check if it's a Firebase Timestamp object
-    if (dateInput && typeof dateInput.seconds === 'number' && typeof dateInput.nanoseconds === 'number') {
-      d = new Date(dateInput.seconds * 1000);
-    }
-    // Check if it's already a Date object
-    else if (dateInput instanceof Date) {
+    if (dateInput && typeof dateInput.seconds === 'number') {
+      d = new Date(dateInput.seconds * 1000 + (dateInput.nanoseconds || 0) / 1000000);
+    } else if (dateInput instanceof Date) {
       d = dateInput;
-    }
-    // Try to parse if it's a string or number
-    else {
+    } else {
       d = new Date(dateInput);
     }
-
-    // Validate the created Date object
     if (isNaN(d.getTime())) {
       console.warn('Invalid date input for formatDate in dashboard:', dateInput);
       return 'Invalid Date';
     }
-    return d.toLocaleDateString();
+    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
+  getStatusColor(status: string): string {
+    switch (status) {
+      case 'pending': return 'warning';
+      case 'processing': return 'primary';
+      case 'shipped': return 'tertiary';
+      case 'delivered': return 'success';
+      case 'cancelled': return 'danger';
+      default: return 'medium';
+    }
+  }
+
+  doRefresh(event: any) {
+    this.loadDashboardData(event);
   }
 
   ngOnDestroy() {
-    // Unsubscribe to prevent memory leaks
     if (this.dashboardDataSubscription) {
       this.dashboardDataSubscription.unsubscribe();
     }
   }
 }
+

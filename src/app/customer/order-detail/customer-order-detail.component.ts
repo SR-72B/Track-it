@@ -1,23 +1,35 @@
 // src/app/customer/order-detail/customer-order-detail.component.ts
-import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
-import { AlertController, LoadingController, ToastController } from '@ionic/angular';
-import { Observable, firstValueFrom } from 'rxjs'; // Import firstValueFrom for modern RxJS
-import { finalize } from 'rxjs/operators';
+import { Component, OnInit, OnDestroy } from '@angular/core'; // Added OnDestroy
+import { ActivatedRoute, Router, RouterModule } from '@angular/router'; // Added RouterModule
+import { CommonModule } from '@angular/common'; // Added CommonModule
+import { AlertController, LoadingController, ToastController, IonicModule } from '@ionic/angular'; // Added IonicModule
+import { Observable, Subscription, firstValueFrom, of } from 'rxjs'; // Added Subscription, of
+import { finalize, catchError } from 'rxjs/operators'; // Added catchError
+
 import { Order, OrderUpdate } from '../../retailer/order-management/order.service'; // Ensure this path is correct
 import { CustomerOrderService } from '../order/customer-order.service'; // Ensure this path is correct
 
 @Component({
   selector: 'app-customer-order-detail',
-  templateUrl: './customer-order-detail.component.html',
-  styleUrls: ['./customer-order-detail.component.scss']
+  templateUrl: './customer-order-detail.component.html', // Ensure this file exists
+  styleUrls: ['./customer-order-detail.component.scss'],   // Ensure this file exists
+  standalone: true, // Mark component as standalone
+  imports: [
+    CommonModule,     // For *ngIf, *ngFor, async pipe, etc.
+    IonicModule,      // For Ionic components (ion-card, ion-list, ion-button, ion-spinner etc.) and services
+    RouterModule      // For routerLink (if used in the template)
+  ]
 })
-export class CustomerOrderDetailComponent implements OnInit {
-  orderId: string;
-  // The Observable will emit an object containing the order and its updates
-  orderData$: Observable<{order: Order, updates: OrderUpdate[]}>;
+export class CustomerOrderDetailComponent implements OnInit, OnDestroy {
+  orderId: string | null = null; // Initialize to null
+  orderData$: Observable<{order: Order, updates: OrderUpdate[]} | null > = of(null); // Initialize with null observable
   isLoading = true;
   isCancelling = false;
+  errorMessage: string | null = null;
+
+  private routeSubscription: Subscription | undefined;
+  private orderDataSubscription: Subscription | undefined;
+
 
   constructor(
     private route: ActivatedRoute,
@@ -26,250 +38,206 @@ export class CustomerOrderDetailComponent implements OnInit {
     private alertController: AlertController,
     private loadingController: LoadingController,
     private toastController: ToastController
-  ) { }
+  ) {}
 
   ngOnInit() {
-    // Subscribe to route parameters to get the order ID
-    this.route.params.subscribe(params => {
+    this.routeSubscription = this.route.params.subscribe(params => {
       const id = params['id'];
       if (id) {
         this.orderId = id;
-        this.loadOrder(); // Load order details when ID is available
+        this.loadOrder();
       } else {
         console.error('Order ID not found in route parameters');
-        // Optionally navigate back or show an error message to the user
-        this.router.navigate(['/customer/orders']); // Example: navigate to orders list
+        this.errorMessage = 'Order ID is missing. Cannot display order details.';
+        this.isLoading = false;
+        // Optionally navigate back or show a more prominent error
+        this.router.navigate(['/customer/orders']);
       }
     });
   }
 
-  async loadOrder() {
-    // Ensure orderId is present before attempting to load
+  async loadOrder(refresherEvent?: any) {
     if (!this.orderId) {
       this.isLoading = false;
-      console.error('Cannot load order without an Order ID.');
-      const toast = await this.toastController.create({
-        message: 'Could not load order details: Missing ID.',
-        duration: 3000,
-        color: 'danger',
-        position: 'top'
-      });
-      await toast.present();
+      this.errorMessage = 'Cannot load order: Order ID is missing.';
+      if (refresherEvent) refresherEvent.target.complete();
+      console.error(this.errorMessage);
+      // No need for toast here as ngOnInit error handling or template will show message
       return;
     }
 
-    this.isLoading = true; // Set loading state
-    const loading = await this.loadingController.create({
-      message: 'Loading order details...',
-      spinner: 'crescent',
-      backdropDismiss: false // Prevent dismissal by clicking on the backdrop
-    });
-    await loading.present();
+    this.isLoading = true;
+    this.errorMessage = null;
+    let loadingIndicator: HTMLIonLoadingElement | undefined;
 
-    // Fetch order and its updates
-    this.orderData$ = this.customerOrderService.getOrderWithUpdates(this.orderId).pipe(
-      finalize(async () => { // Operations to perform after the observable completes or errors
-        this.isLoading = false; // Reset loading state
-        if (loading) {
-            await loading.dismiss(); // Dismiss the loading indicator
+    if (!refresherEvent) { // Only show full page loader if not a refresher action
+      loadingIndicator = await this.loadingController.create({
+        message: 'Loading order details...',
+        spinner: 'crescent',
+        backdropDismiss: false
+      });
+      await loadingIndicator.present();
+    }
+
+    // Unsubscribe from previous order data subscription if it exists
+    if (this.orderDataSubscription) {
+        this.orderDataSubscription.unsubscribe();
+    }
+
+    this.orderDataSubscription = this.customerOrderService.getOrderWithUpdates(this.orderId).pipe(
+      catchError(err => {
+        console.error('Error fetching order details:', err);
+        this.errorMessage = 'Failed to load order details. Please try again.';
+        this.orderData$ = of(null); // Set to null observable on error
+        return of(null); // Propagate null or an empty structure
+      }),
+      finalize(async () => {
+        this.isLoading = false;
+        if (loadingIndicator) {
+          await loadingIndicator.dismiss().catch(e => console.warn("Error dismissing loading indicator:", e));
         }
-
-        // Mark updates as seen by the customer
-        try {
-          if (this.orderId) { // Ensure orderId is still valid
+        if (refresherEvent) {
+          refresherEvent.target.complete();
+        }
+        // Mark updates as seen after data is loaded (or attempted to load)
+        if (this.orderId && !this.errorMessage) { // Only if orderId exists and no major error occurred
+          try {
             await firstValueFrom(this.customerOrderService.markUpdatesSeen(this.orderId));
+          } catch (error) {
+            console.warn('Failed to mark updates as seen:', error);
+            // This is a background task, so typically no need to show a user-facing error unless critical
           }
-        } catch (error) {
-          console.error('Failed to mark updates as seen:', error);
-          // Optionally inform the user if this fails, though it's a background task
         }
       })
-    );
+    ).subscribe(data => {
+        if(data){
+            this.orderData$ = of(data); // Update the observable for the async pipe
+        } else if (!this.errorMessage) {
+            // If data is null from catchError and no specific error message was set yet
+            this.errorMessage = 'Order details could not be loaded.';
+        }
+    });
   }
 
-  /**
-   * Formats a date input into a readable string.
-   * Handles Firebase Timestamps, JavaScript Date objects, and date strings/numbers.
-   * @param dateInput The date to format (can be Firebase Timestamp, Date, string, or number). It's typed as 'any' to allow runtime checks.
-   * @returns A formatted date string or a placeholder string for invalid/missing dates.
-   */
   formatDate(dateInput: any): string {
-    if (!dateInput) return 'N/A'; // Return a placeholder for null or undefined dates
-
+    if (!dateInput) return 'N/A';
     let d: Date;
-
-    // Case 1: Input is a Firebase Timestamp-like object (has .seconds and .nanoseconds)
-    // The 'any' type for dateInput allows this access without a compile-time error here.
     if (dateInput && typeof dateInput.seconds === 'number' && typeof dateInput.nanoseconds === 'number') {
-      d = new Date(dateInput.seconds * 1000); // Convert seconds to milliseconds
-    }
-    // Case 2: Input is already a JavaScript Date object
-    else if (dateInput instanceof Date) {
+      d = new Date(dateInput.seconds * 1000);
+    } else if (dateInput instanceof Date) {
       d = dateInput;
-    }
-    // Case 3: Input is a string or number that can be parsed by new Date()
-    else {
+    } else {
       d = new Date(dateInput);
     }
-
-    // Validate if the created Date object is valid
     if (isNaN(d.getTime())) {
       console.warn('Invalid date input for formatDate:', dateInput);
-      return 'Invalid Date'; // Return a placeholder for invalid dates
+      return 'Invalid Date';
     }
-
-    // Format the valid date
-    return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
   }
 
-  /**
-   * Determines if an order can be cancelled based on its status and cancellation deadline.
-   * @param order The order object to check.
-   * @returns True if the order can be cancelled, false otherwise.
-   */
   canCancel(order: Order | undefined | null): boolean {
-    if (!order) return false; // Guard against null or undefined order object
-
-    // Orders with these statuses cannot be cancelled
+    if (!order) return false;
     if (['cancelled', 'delivered', 'completed'].includes(order.status)) {
       return false;
     }
-
-    // Check for a valid cancellation deadline
     if (!order.cancellationDeadline) {
-        console.warn('Cancellation deadline is not set for order:', order.id);
-        // Business decision: if no deadline, can it be cancelled? Assuming no for safety.
-        return false;
+      console.warn('Cancellation deadline is not set for order:', order.id);
+      return false; // Or true, depending on business logic if deadline is missing
     }
-
     const now = new Date();
     let deadline: Date;
-    // Cast order.cancellationDeadline to 'any' to satisfy the TypeScript compiler
-    // when accessing .seconds and .nanoseconds. The runtime checks will handle the actual type.
-    // This is necessary if the Order interface types cancellationDeadline strictly as Date,
-    // but the actual data might be a Firebase Timestamp.
     const deadlineInput = order.cancellationDeadline as any;
-
-    // Convert deadlineInput to a Date object, similar to formatDate
-    if (deadlineInput && typeof deadlineInput.seconds === 'number' && typeof deadlineInput.nanoseconds === 'number') {
+    if (deadlineInput && typeof deadlineInput.seconds === 'number') {
       deadline = new Date(deadlineInput.seconds * 1000);
     } else if (deadlineInput instanceof Date) {
       deadline = deadlineInput;
     } else {
       deadline = new Date(deadlineInput);
     }
-
-    // Validate the deadline date
     if (isNaN(deadline.getTime())) {
       console.warn('Invalid cancellation deadline format for order:', order.id, deadlineInput);
-      return false; // Cannot determine cancellability if deadline is invalid
+      return false;
     }
-    
-    return now <= deadline; // Order can be cancelled if current time is before or at the deadline
+    return now <= deadline;
   }
 
-  /**
-   * Initiates the order cancellation process.
-   * Prompts the user for a reason and then calls the service to cancel the order.
-   * @param order The order to be cancelled.
-   */
   async cancelOrder(order: Order | undefined | null) {
     if (!order || !order.id) {
-        console.error('Order or Order ID is undefined, cannot cancel.');
-        const toast = await this.toastController.create({
-            message: 'Cannot cancel order: Order details missing.',
-            duration: 3000,
-            color: 'danger',
-            position: 'top'
-        });
-        await toast.present();
-        return;
+      console.error('Order or Order ID is undefined, cannot cancel.');
+      this.showToast('Cannot cancel order: Order details missing.', 'danger');
+      return;
     }
 
-    // Check if the order is eligible for cancellation
     if (!this.canCancel(order)) {
-        const toast = await this.toastController.create({
-            message: 'This order can no longer be cancelled.',
-            duration: 3000,
-            color: 'warning',
-            position: 'top'
-        });
-        await toast.present();
-        return;
+      this.showToast('This order can no longer be cancelled.', 'warning');
+      return;
     }
 
-    // Confirm cancellation with the user
     const alert = await this.alertController.create({
       header: 'Confirm Cancellation',
       message: 'Are you sure you want to cancel this order? Please provide a reason (optional).',
-      inputs: [
-        {
-          name: 'reason',
-          type: 'textarea', // Using textarea for potentially longer reasons
-          placeholder: 'Reason for cancellation (e.g., changed mind)'
-        }
-      ],
+      inputs: [{ name: 'reason', type: 'textarea', placeholder: 'Reason for cancellation' }],
       buttons: [
-        {
-          text: 'Back',
-          role: 'cancel',
-          cssClass: 'alert-button-cancel' // Optional: for styling
-        },
+        { text: 'Back', role: 'cancel' },
         {
           text: 'Yes, Cancel Order',
-          cssClass: 'alert-button-danger', // Optional: for styling the confirm button
+          cssClass: 'alert-button-danger',
           handler: async (data) => {
-            // Use provided reason or a default if none is given
-            const reason = data.reason ? data.reason.trim() : 'Customer cancelled without providing a reason';
-
-            this.isCancelling = true; // Set cancelling state
+            const reason = data.reason?.trim() || 'Customer cancelled without providing a reason';
+            this.isCancelling = true;
             const loading = await this.loadingController.create({
               message: 'Cancelling order...',
-              spinner: 'crescent',
-              backdropDismiss: false
+              spinner: 'crescent'
             });
             await loading.present();
-
             try {
-              // Call the service to cancel the order
-              await firstValueFrom(this.customerOrderService.cancelOrder(order.id, reason));
-              
-              const toast = await this.toastController.create({
-                message: 'Order cancelled successfully.',
-                duration: 2500,
-                color: 'success',
-                position: 'top'
-              });
-              await toast.present();
-              
-              // Reload order details to reflect the cancellation.
-              // The loadOrder method's finalize block will handle its own loading indicator.
-              await this.loadOrder(); 
-            } catch (error: any) { // Catch any errors during cancellation
-              if(loading) await loading.dismiss(); // Ensure loading indicator is dismissed on error
-              this.isCancelling = false; // Reset cancelling state
-              
+              await firstValueFrom(this.customerOrderService.cancelOrder(order.id!, reason));
+              this.showToast('Order cancelled successfully.', 'success');
+              await this.loadOrder(); // Refresh order details
+            } catch (error: any) {
               console.error('Error cancelling order:', error);
-              const errorAlert = await this.alertController.create({
-                header: 'Cancellation Failed',
-                message: error?.message || 'An unexpected error occurred while cancelling the order. Please try again.',
-                buttons: ['OK']
-              });
-              await errorAlert.present();
+              this.showErrorAlert('Cancellation Failed', error?.message || 'An unexpected error occurred.');
             } finally {
-              // This block executes regardless of success or failure of the try block
-              // Ensures isCancelling is reset if not already done (e.g. if loadOrder itself throws an error)
-              this.isCancelling = false; 
-              // Defensive dismissal of loading, though usually handled in try/catch.
-              // Check if loading exists and hasn't been dismissed.
-              // Note: Be cautious with dismissing loading controllers that might have already been dismissed
-              // or are managed by other parts of the code (like the finalize block in loadOrder).
-              // The `if(loading) await loading.dismiss();` in the catch block is usually sufficient for errors.
+              this.isCancelling = false;
+              await loading.dismiss().catch(e => console.warn("Error dismissing cancel loading:", e));
             }
           }
         }
       ]
     });
     await alert.present();
+  }
+
+  async showErrorAlert(header: string, message: string) {
+    const alert = await this.alertController.create({
+      header: header,
+      message: message,
+      buttons: ['OK']
+    });
+    await alert.present();
+  }
+
+  async showToast(message: string, color: 'success' | 'warning' | 'danger' | string = 'medium', duration: number = 3000) {
+    const toast = await this.toastController.create({
+      message: message,
+      duration: duration,
+      color: color,
+      position: 'top'
+    });
+    await toast.present();
+  }
+
+  doRefresh(event: any) {
+    this.loadOrder(event);
+  }
+
+  ngOnDestroy() {
+    if (this.routeSubscription) {
+      this.routeSubscription.unsubscribe();
+    }
+    if (this.orderDataSubscription) {
+        this.orderDataSubscription.unsubscribe();
+    }
   }
 }

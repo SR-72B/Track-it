@@ -1,16 +1,16 @@
 // src/app/communication/notifications/notifications.component.ts
-import { Component, OnInit } from '@angular/core';
-import { Router, RouterModule } from '@angular/router'; // RouterModule added
-import { LoadingController, IonicModule } from '@ionic/angular'; // IonicModule added
-import { Observable, of } from 'rxjs';
-import { finalize, first, catchError } from 'rxjs/operators';
-import { CommonModule } from '@angular/common'; // CommonModule added
+import { Component, OnInit, OnDestroy } from '@angular/core'; // Added OnDestroy
+import { Router, RouterModule } from '@angular/router';
+import { LoadingController, IonicModule } from '@ionic/angular';
+import { Observable, of, Subscription } from 'rxjs'; // Added Subscription
+import { finalize, first, catchError, switchMap, tap } from 'rxjs/operators'; // Added switchMap, tap
+import { CommonModule } from '@angular/common';
 
-import { AuthService } from '../../auth/auth.service'; // Assuming this path is correct
-import { CommunicationService, Notification } from '../communication.service'; // Assuming this path is correct
+import { AuthService, User as AuthUser } from '../../auth/auth.service'; // Use AuthUser to avoid name clash if User is defined locally
+import { CommunicationService, Notification } from '../communication.service';
 
-// Define a simple User interface if not globally available
-// This might already be defined in your AuthService or a shared models file
+// Local User interface if needed, or ensure AuthUser from AuthService is sufficient
+// If AuthUser is sufficient and has 'uid', this local definition can be removed.
 export interface User {
   uid: string;
   // other potential user properties like email, displayName, etc.
@@ -18,94 +18,95 @@ export interface User {
 
 @Component({
   selector: 'app-notifications',
-  templateUrl: './notifications.component.html', // Ensure this file exists
-  styleUrls: ['./notifications.component.scss'],   // Ensure this file exists
-  standalone: true, // Mark component as standalone
+  templateUrl: './notifications.component.html',
+  styleUrls: ['./notifications.component.scss'],
+  standalone: true,
   imports: [
-    CommonModule,     // For *ngIf, *ngFor, async pipe, etc.
-    IonicModule,      // For Ionic components (ion-list, ion-item, ion-spinner, ion-icon, etc.) and services
-    RouterModule      // For routerLink (if used in the template)
+    CommonModule,
+    IonicModule,
+    RouterModule
   ]
 })
-export class NotificationsComponent implements OnInit {
-  notifications$: Observable<Notification[]>;
+export class NotificationsComponent implements OnInit, OnDestroy {
+  notifications$: Observable<Notification[]> = of([]);
   isLoading = true;
   errorMessage: string | null = null;
+  currentUser: AuthUser | null = null; // Use the User type from AuthService
+
+  private loadNotificationsSubscription: Subscription | undefined;
+  private currentUserSubscription: Subscription | undefined;
+
 
   constructor(
     private authService: AuthService,
     private communicationService: CommunicationService,
     private router: Router,
     private loadingController: LoadingController
-  ) {
-    // Initialize notifications$ to an empty array observable to prevent template errors before loading
-    this.notifications$ = of([]);
-  }
+  ) {}
 
   ngOnInit() {
-    this.loadNotifications();
+    this.currentUserSubscription = this.authService.currentUser$.subscribe(user => {
+        this.currentUser = user; // Keep track of the current user
+        if (user && user.uid) {
+            this.loadNotifications();
+        } else {
+            this.isLoading = false;
+            this.notifications$ = of([]);
+            this.errorMessage = "Please log in to view notifications.";
+        }
+    });
   }
 
-  async loadNotifications(event?: any) { // Added event parameter for ion-refresher
+  async loadNotifications(event?: any) {
+    if (!this.currentUser || !this.currentUser.uid) {
+      this.isLoading = false;
+      this.errorMessage = "User not authenticated. Cannot load notifications.";
+      if (event) event.target.complete();
+      return;
+    }
+
     this.isLoading = true;
     this.errorMessage = null;
-    let loading: HTMLIonLoadingElement | undefined;
+    let loader: HTMLIonLoadingElement | undefined;
 
-    // Only show loader if not triggered by refresher
-    if (!event) {
-      loading = await this.loadingController.create({
+    if (!event) { // Only show full page loader if not a refresher action
+      loader = await this.loadingController.create({
         message: 'Loading notifications...',
         spinner: 'crescent'
       });
-      await loading.present();
+      await loader.present();
     }
 
-    this.authService.currentUser$.pipe(
-      first(), // Take the first emitted value and complete
-      catchError(err => {
-        console.error('Error getting current user:', err);
-        this.errorMessage = 'Could not load user data.';
-        return of(null); // Return a null user so the flow can continue to finalize
-      })
-    ).subscribe(user => {
-      const dismissLoader = () => {
-        this.isLoading = false;
-        if (loading) {
-          loading.dismiss().catch(e => console.warn('Error dismissing loading:', e));
-        }
-        if (event) {
-          event.target.complete(); // Complete ion-refresher animation
-        }
-      };
+    // Unsubscribe from previous if any, to prevent multiple calls if loadNotifications is called again
+    if (this.loadNotificationsSubscription) {
+        this.loadNotificationsSubscription.unsubscribe();
+    }
 
-      if (user) {
-        const knownUser = user as User; // Type assertion
-        if (knownUser && knownUser.uid) { // Added check for knownUser as well
-          this.notifications$ = this.communicationService.getNotifications(knownUser.uid).pipe(
-            finalize(() => {
-              dismissLoader();
-            }),
-            catchError(err => {
-              console.error('Error loading notifications:', err);
-              this.errorMessage = 'Failed to load notifications.';
-              dismissLoader();
-              return of([]); // Return empty array on error
-            })
-          );
-        } else {
-          console.warn('User object received, but UID is missing.');
-          this.errorMessage = 'User identifier is missing.';
-          this.notifications$ = of([]);
-          dismissLoader();
-        }
-      } else {
-        if (!this.errorMessage) {
-          this.errorMessage = 'No user logged in to load notifications.';
-        }
-        this.notifications$ = of([]);
-        dismissLoader();
-      }
-    });
+    this.notifications$ = this.communicationService.getNotifications(this.currentUser.uid).pipe(
+        tap(notifications => {
+            if (notifications.length === 0 && !this.errorMessage) {
+                // Optionally set a message if no notifications are found,
+                // but often it's better to show "No notifications" in the template.
+            }
+        }),
+        finalize(() => {
+            this.isLoading = false;
+            if (loader) {
+            loader.dismiss().catch(e => console.warn('Error dismissing loading:', e));
+            }
+            if (event) {
+            event.target.complete();
+            }
+        }),
+        catchError(err => {
+            console.error('Error loading notifications:', err);
+            this.errorMessage = 'Failed to load notifications. Please try again.';
+            return of([]); // Return empty array on error
+        })
+    );
+    // If you need to perform actions after the first emission (like marking as seen implicitly),
+    // you might subscribe here, but for display, async pipe is fine.
+    // this.loadNotificationsSubscription = this.notifications$.subscribe();
   }
 
   handleNotification(notification: Notification) {
@@ -114,27 +115,37 @@ export class NotificationsComponent implements OnInit {
       return;
     }
 
+    // Optimistically navigate and then mark as read, or mark as read first.
+    // Marking as read first ensures it's done even if navigation has issues.
     this.communicationService.markNotificationAsRead(notification.id).pipe(
-      first()
-    ).subscribe({
-      next: () => console.log(`Notification ${notification.id} marked as read.`),
-      error: (err) => console.error(`Error marking notification ${notification.id} as read:`, err)
+      first(), // Ensure the observable completes
+      catchError(err => {
+        console.error(`Error marking notification ${notification.id} as read:`, err);
+        // Optionally inform user if marking as read fails critically
+        return of(null); // Continue navigation even if marking read fails
+      })
+    ).subscribe(() => {
+      console.log(`Notification ${notification.id} marked as read or attempt was made.`);
+      // Proceed with navigation after attempting to mark as read
+      this.navigateFromNotification(notification);
     });
+  }
 
+  private navigateFromNotification(notification: Notification) {
     if (notification.type === 'message' && notification.relatedId) {
       this.router.navigate(['/communication/chat', notification.relatedId]);
     } else if (notification.type === 'call' && notification.relatedId) {
       this.router.navigate(['/communication/video-call', notification.relatedId]);
     } else if ((notification.type === 'order' || notification.type === 'status') && notification.relatedId) {
-      this.authService.isRetailer().pipe(first()).subscribe(isRetailer => {
-        if (isRetailer) {
-          this.router.navigate(['/retailer/orders', notification.relatedId]);
-        } else {
-          this.router.navigate(['/customer/orders', notification.relatedId]);
-        }
-      });
+      // No need to subscribe to isRetailer here again if currentUser already has accountType
+      if (this.currentUser && this.currentUser.accountType === 'retailer') {
+        this.router.navigate(['/retailer/orders', notification.relatedId]);
+      } else {
+        this.router.navigate(['/customer/orders', notification.relatedId]);
+      }
     } else {
       console.log(`Unhandled notification type: ${notification.type} or missing relatedId.`);
+      // Optionally navigate to a default view or show a message
     }
   }
 
@@ -142,9 +153,12 @@ export class NotificationsComponent implements OnInit {
     if (!dateInput) return 'No date';
     let date: Date;
 
-    if (dateInput && typeof dateInput.toDate === 'function') {
+    if (dateInput && typeof dateInput.toDate === 'function') { // Firebase Timestamp (V9 SDK style)
       date = dateInput.toDate();
-    } else if (dateInput instanceof Date) {
+    } else if (dateInput && typeof dateInput.seconds === 'number') { // Firebase Timestamp (compat SDK style)
+      date = new Date(dateInput.seconds * 1000 + (dateInput.nanoseconds || 0) / 1000000);
+    }
+    else if (dateInput instanceof Date) {
       date = dateInput;
     } else {
       try {
@@ -159,11 +173,26 @@ export class NotificationsComponent implements OnInit {
     if (isNaN(date.getTime())) {
       return 'Invalid date';
     }
+    // More sophisticated relative time formatting could be added here
     return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
   }
 
-  // For ion-refresher
   doRefresh(event: any) {
-    this.loadNotifications(event);
+    if (this.currentUser) {
+        this.loadNotifications(event);
+    } else {
+        event.target.complete();
+        this.errorMessage = "Please log in to refresh notifications.";
+    }
+  }
+
+  ngOnDestroy() {
+    if (this.currentUserSubscription) {
+      this.currentUserSubscription.unsubscribe();
+    }
+    if (this.loadNotificationsSubscription) {
+        this.loadNotificationsSubscription.unsubscribe();
+    }
   }
 }
+

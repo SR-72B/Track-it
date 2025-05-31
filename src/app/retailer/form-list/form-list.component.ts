@@ -1,149 +1,165 @@
 // src/app/retailer/form-list/form-list.component.ts
-import { Component, OnInit, OnDestroy } from '@angular/core'; // Added OnDestroy
-import { Router } from '@angular/router';
-import { AlertController, LoadingController } from '@ionic/angular';
-import { Observable, Subscription, of } from 'rxjs'; // Added Subscription and of
-import { map, first, filter, catchError } from 'rxjs/operators'; // Added first, filter, catchError
-import { AuthService, User } from '../../auth/auth.service'; // Ensure User is exported from auth.service
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core'; // Added ChangeDetectorRef
+import { Router, RouterModule } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { AlertController, LoadingController, IonicModule, ToastController } from '@ionic/angular';
+import { Observable, Subscription, of, firstValueFrom } from 'rxjs'; // Added firstValueFrom
+import { map, first, filter, catchError, finalize, switchMap, tap } from 'rxjs/operators';
+
+import { AuthService, User } from '../../auth/auth.service';
 import { FormBuilderService, OrderForm } from '../form-builder/form-builder.service';
 
 @Component({
   selector: 'app-form-list',
   templateUrl: './form-list.component.html',
-  styleUrls: ['./form-list.component.scss']
+  styleUrls: ['./form-list.component.scss'],
+  standalone: true,
+  imports: [
+    CommonModule,
+    IonicModule,
+    RouterModule
+  ]
 })
 export class FormListComponent implements OnInit, OnDestroy {
-  forms$: Observable<OrderForm[]>;
+  forms$: Observable<OrderForm[]> = of([]);
   isLoading = true;
-  private userSubscription: Subscription | null = null;
+  errorMessage: string | null = null;
+  currentUser: User | null = null; // Store the current user
+
+  private userSubscription: Subscription | undefined;
+  private formsSubscription: Subscription | undefined;
 
   constructor(
     private authService: AuthService,
     private formBuilderService: FormBuilderService,
     private router: Router,
     private alertController: AlertController,
-    private loadingController: LoadingController
-  ) { }
+    private loadingController: LoadingController,
+    private toastController: ToastController,
+    private cdr: ChangeDetectorRef // Added ChangeDetectorRef
+  ) {}
 
   ngOnInit() {
-    this.loadForms();
+    this.userSubscription = this.authService.currentUser$.subscribe(user => {
+      this.currentUser = user; // Keep track of the current user
+      if (user && user.uid) {
+        this.loadFormsForUser(user.uid);
+      } else {
+        this.isLoading = false;
+        this.forms$ = of([]);
+        this.errorMessage = "Please log in to view forms.";
+        this.cdr.detectChanges(); // Ensure UI update
+      }
+    });
   }
 
-  loadForms() {
+  // loadInitialUserAndForms was combined into ngOnInit for simplicity with currentUser$ subscription
+
+  async loadFormsForUser(userId: string, refresherEvent?: any) {
     this.isLoading = true;
-    if (this.userSubscription) {
-      this.userSubscription.unsubscribe();
+    this.errorMessage = null;
+    let loader: HTMLIonLoadingElement | undefined;
+
+    if (!refresherEvent) {
+      // Optional: Show loader for initial load
+      // loader = await this.loadingController.create({ message: 'Loading forms...' });
+      // await loader.present();
     }
-    this.userSubscription = this.authService.currentUser$.pipe(
-      filter((user): user is User => !!user), // Ensure user is not null and type guard to User
-      first() // Take the first emitted non-null user and complete
-    ).subscribe(
-      user => {
-        // user is now guaranteed to be of type User
-        this.forms$ = this.formBuilderService.getRetailerForms(user.uid).pipe(
-          map(forms => {
-            this.isLoading = false;
-            return forms;
-          }),
-          catchError(error => {
-            console.error('Error loading forms:', error);
-            this.isLoading = false;
-            // Optionally show an error to the user
-            this.alertController.create({
-              header: 'Error',
-              message: 'Could not load forms.',
-              buttons: ['OK']
-            }).then(alert => alert.present());
-            return of([]); // Return an empty array on error
-          })
-        );
-      },
-      error => { // Handle cases where currentUser$ might error or complete without a valid user
-        console.error('Error getting current user:', error);
+
+    if (this.formsSubscription) {
+        this.formsSubscription.unsubscribe();
+    }
+
+    this.forms$ = this.formBuilderService.getRetailerForms(userId).pipe(
+      map(forms => {
+        return forms.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+      }),
+      finalize(async () => {
         this.isLoading = false;
-        this.forms$ = of([]); // Initialize forms$ to an empty observable
-        this.alertController.create({
-            header: 'Authentication Error',
-            message: 'Could not retrieve user information. Please try logging in again.',
-            buttons: ['OK']
-        }).then(alert => alert.present());
-      }
+        // if (loader) await loader.dismiss().catch(e => console.warn("Loader dismiss error", e));
+        if (refresherEvent) refresherEvent.target.complete();
+        this.cdr.detectChanges(); // Ensure UI update
+      }),
+      catchError(error => {
+        console.error('Error loading forms:', error);
+        this.errorMessage = 'Could not load forms. Please try again.';
+        return of([]);
+      })
     );
+    // If not using async pipe directly for forms$ and need to subscribe for side effects:
+    // this.formsSubscription = this.forms$.subscribe();
   }
 
   createForm() {
     this.router.navigate(['/retailer/forms/create']);
   }
 
-  editForm(formId: string) {
-    this.router.navigate(['/retailer/forms/edit', formId]);
+  editForm(formId: string | undefined) {
+    if (formId) {
+      this.router.navigate(['/retailer/forms/edit', formId]);
+    } else {
+      console.warn('Edit form called with undefined formId');
+      this.showToast('Cannot edit form: Form ID is missing.', 'danger');
+    }
   }
 
   async toggleFormStatus(form: OrderForm) {
-    if (!form || typeof form.id === 'undefined') { // Added check for form.id
-      console.error('Form or Form ID is undefined, cannot toggle status.');
+    if (!form || typeof form.id === 'undefined') {
+      this.showToast('Form details are missing. Cannot toggle status.', 'danger');
       return;
+    }
+    if (!this.currentUser || !this.currentUser.uid) { // Ensure user context for actions
+        this.showToast('User not authenticated. Please log in.', 'danger');
+        return;
     }
 
     const newStatus = !form.active;
-    const loading = await this.loadingController.create({
-      message: newStatus ? 'Activating form...' : 'Deactivating form...',
-      spinner: 'crescent'
-    });
+    const actionMessage = newStatus ? 'Activating form...' : 'Deactivating form...';
+    const loading = await this.loadingController.create({ message: actionMessage, spinner: 'crescent' });
     await loading.present();
 
     try {
+      // Ensure updateOrderForm in service doesn't require retailerId if it can infer or doesn't need it for this specific update
       await this.formBuilderService.updateOrderForm(form.id, { active: newStatus });
-      // Optionally, refresh the list or update the local form object's status
-      // For simplicity, the list will refresh if getRetailerForms emits due to data change
-      // Or you could manually update the specific form in a local array if you were not using forms$ directly
-      await loading.dismiss();
+      this.showToast(`Form "${form.title}" ${newStatus ? 'activated' : 'deactivated'}.`, 'success');
+      // Optimistically update local data or rely on observable to refresh
+      // Forcing a reload for simplicity here, but could be more granular
+      this.loadFormsForUser(this.currentUser.uid);
     } catch (error: any) {
-      await loading.dismiss();
-      const alert = await this.alertController.create({
-        header: 'Error',
-        message: error.message || 'There was an error updating the form status.',
-        buttons: ['OK']
-      });
-      await alert.present();
+      this.showErrorAlert('Update Failed', error.message || 'There was an error updating the form status.');
+    } finally {
+      await loading.dismiss().catch(e => console.warn("Loader dismiss error", e));
     }
   }
 
   async deleteForm(form: OrderForm) {
-    if (!form || typeof form.id === 'undefined') { // Added check for form.id
-        console.error('Form or Form ID is undefined, cannot delete.');
-        return;
+    if (!form || typeof form.id === 'undefined') {
+      this.showToast('Form details are missing. Cannot delete.', 'danger');
+      return;
     }
     const alert = await this.alertController.create({
       header: 'Confirm Delete',
-      message: `Are you sure you want to delete "${form.title}"? This action cannot be undone.`,
+      message: `Are you sure you want to delete the form "${form.title}"? This action cannot be undone.`,
       buttons: [
-        {
-          text: 'Cancel',
-          role: 'cancel'
-        },
+        { text: 'Cancel', role: 'cancel' },
         {
           text: 'Delete',
+          cssClass: 'alert-button-danger',
           handler: async () => {
-            const loading = await this.loadingController.create({
-              message: 'Deleting form...',
-              spinner: 'crescent'
-            });
+            const loading = await this.loadingController.create({ message: 'Deleting form...', spinner: 'crescent' });
             await loading.present();
-
             try {
-              await this.formBuilderService.deleteOrderForm(form.id);
-              await loading.dismiss();
-              // The list will automatically update because getRetailerForms is an observable
-              // listening to Firestore changes.
+              await this.formBuilderService.deleteOrderForm(form.id!);
+              this.showToast('Form deleted successfully.', 'success');
+              // List should auto-update if getRetailerForms is a hot observable.
+              // If not, explicitly reload:
+              if (this.currentUser && this.currentUser.uid) {
+                this.loadFormsForUser(this.currentUser.uid);
+              }
             } catch (error: any) {
-              await loading.dismiss();
-              const errorAlert = await this.alertController.create({
-                header: 'Error',
-                message: error.message || 'There was an error deleting the form.',
-                buttons: ['OK']
-              });
-              await errorAlert.present();
+              this.showErrorAlert('Delete Failed', error.message || 'There was an error deleting the form.');
+            } finally {
+              await loading.dismiss().catch(e => console.warn("Loader dismiss error", e));
             }
           }
         }
@@ -152,9 +168,34 @@ export class FormListComponent implements OnInit, OnDestroy {
     await alert.present();
   }
 
+  doRefresh(event: any) {
+    // Use the currentUser property which is updated by the ngOnInit subscription
+    if (this.currentUser && this.currentUser.uid) {
+      this.loadFormsForUser(this.currentUser.uid, event);
+    } else {
+      this.showToast('Please log in to refresh forms.', 'warning');
+      if (event) event.target.complete();
+    }
+  }
+
+  async showToast(message: string, color: 'success' | 'warning' | 'danger' | string = 'medium', duration: number = 3000) {
+    const toast = await this.toastController.create({ message, duration, color, position: 'top' });
+    toast.present();
+  }
+
+  async showErrorAlert(header: string, message: string) {
+    const alert = await this.alertController.create({ header, message, buttons: ['OK'] });
+    await alert.present();
+  }
+
   ngOnDestroy() {
     if (this.userSubscription) {
       this.userSubscription.unsubscribe();
     }
+    if (this.formsSubscription) { // If you decide to manually subscribe to forms$
+        this.formsSubscription.unsubscribe();
+    }
   }
 }
+
+

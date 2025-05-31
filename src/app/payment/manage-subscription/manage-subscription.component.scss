@@ -1,0 +1,188 @@
+// src/app/payment/manage-subscription/manage-subscription.component.scss
+
+// Ensure this class is added to ion-content for specific padding
+.manage-subscription-content {
+  --padding-bottom: 20px; // Ensure content doesn't stick to bottom tabs if any
+}
+
+.loading-container,
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh; // Use min-height to allow content to push it down
+  text-align: center;
+  padding: 20px;
+
+  ion-spinner {
+    margin-bottom: 16px;
+    width: 40px;
+    height: 40px;
+  }
+
+  p {
+    color: var(--ion-color-medium-shade);
+    font-size: 1.1em;
+    margin-top: 8px;
+  }
+
+  .error-icon {
+    font-size: 3.5em; // Larger icon for error
+    margin-bottom: 8px;
+  }
+
+  ion-button {
+    margin-top: 20px;
+    --border-radius: 8px;
+  }
+}
+
+.subscription-card,
+.no-subscription-card {
+  margin-left: 0;
+  margin-right: 0;
+  margin-bottom: 24px;
+  border-radius: 12px;
+  box-shadow: var(--card-shadow, 0 4px 15px rgba(0, 0, 0, 0.08));
+
+  ion-card-header {
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--ion-color-step-150, #e0e0e0);
+  }
+
+  ion-card-title {
+    font-size: 1.3em; // Slightly adjusted
+    font-weight: 600;
+  }
+
+  ion-card-subtitle {
+    font-size: 0.9em; // Slightly adjusted
+    margin-top: 4px;
+    .status-text {
+      font-weight: 500;
+      text-transform: capitalize;
+    }
+  }
+}
+
+.details-list {
+  ion-item {
+    --padding-start: 16px; // Add some start padding back for list items
+    --inner-padding-end: 16px; // Add some end padding back
+    --border-color: var(--ion-color-step-100, #f0f0f0); // Very light border for items
+
+    ion-icon[slot="start"] {
+      margin-inline-end: 16px; // Ensure consistent spacing for icons
+      font-size: 1.3em;
+      color: var(--ion-color-medium);
+    }
+
+    ion-label {
+      h3 {
+        font-size: 0.9em;
+        color: var(--ion-color-medium-shade);
+        margin-bottom: 2px;
+        font-weight: 500;
+      }
+      p {
+        font-size: 1em;
+        color: var(--ion-color-dark-shade);
+        font-weight: 400;
+      }
+    }
+  }
+}
+
+.actions-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 0 8px 8px; // Add some padding inside the card content for buttons
+
+  @media (min-width: 576px) {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+
+  ion-button {
+    --border-radius: 20px; // Pill shape buttons
+    text-transform: none;
+    font-weight: 500;
+    margin: 0; // Remove default margins if any from ion-button
+  }
+}
+
+.plan-options {
+  margin-top: 28px;
+  .section-title {
+    font-size: 1.4em;
+    font-weight: 600;
+    margin-bottom: 16px;
+    padding-left: 4px; // Slight indent if not in a card
+    color: var(--ion-color-dark-shade);
+  }
+}
+
+.plan-list {
+  border-radius: 12px;
+  box-shadow: var(--card-shadow, 0 4px 15px rgba(0, 0, 0, 0.08));
+  overflow: hidden; // For rounded corners on items
+
+  ion-item {
+    --padding-start: 16px;
+    --inner-padding-end: 16px;
+    --border-color: var(--ion-color-step-100, #f0f0f0);
+    --highlight-color-focused: var(--ion-color-primary-tint); // Optional focus highlight
+
+    &.current-plan-item {
+      --background: var(--ion-color-light-tint); // Highlight current plan subtly
+      ion-label h2 {
+        color: var(--ion-color-primary);
+      }
+    }
+    
+    ion-icon[slot="start"] {
+      margin-inline-end: 16px;
+      font-size: 1.4em;
+    }
+
+    ion-label {
+      h2 {
+        font-weight: 600;
+        font-size: 1.15em;
+        margin-bottom: 4px;
+      }
+      p {
+        font-size: 0.95em;
+        color: var(--ion-color-medium-shade);
+      }
+      .plan-description {
+        font-size: 0.85em;
+        color: var(--ion-color-step-700, #666);
+        white-space: normal;
+        margin-top: 6px;
+      }
+    }
+    ion-button[slot="end"] {
+      margin-left: 8px; // Space between label and button
+      --border-radius: 20px;
+      &.current-plan-badge {
+        font-size: 0.8em;
+        color: var(--ion-color-success);
+        --padding-start: 8px;
+        --padding-end: 8px;
+      }
+    }
+  }
+}
+
+.no-subscription-card {
+  ion-card-content p {
+    margin-bottom: 20px;
+    font-size: 1.05em;
+    color: var(--ion-color-medium-shade);
+  }
+}
+
+// Removed the empty .alert-button-danger ruleset

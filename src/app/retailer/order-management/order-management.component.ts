@@ -1,29 +1,49 @@
-import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
-import { AlertController, LoadingController, ModalController, ToastController } from '@ionic/angular';
-import { first } from 'rxjs/operators';
+// src/app/retailer/order-management/order-management.component.ts
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { FormBuilder, FormGroup, Validators, FormsModule } from '@angular/forms'; // Changed to FormsModule for ngModel
+import { Router, RouterModule } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { AlertController, LoadingController, ToastController, ModalController, IonicModule } from '@ionic/angular';
 
-// Import your custom services and models
-// Make sure the paths to these files are correct for your project structure
-// Update the path below to the correct location of auth.service in your project structure
-import { AuthService } from '../../auth/auth.service';
-import { OrderService } from'../order-management/order.service';
+import { Observable, Subscription, of, firstValueFrom } from 'rxjs';
+import { first, catchError, finalize, switchMap, tap } from 'rxjs/operators';
+
+import { AuthService, User } from '../../auth/auth.service';
+// Ensure Order interface in order.service.ts includes:
+// id?: string; customerId?: string; customerName?: string; customerEmail?: string;
+// status: string; createdAt: any; totalAmount?: number; purchaseOrder?: string;
+import { OrderService, Order, OrderUpdate } from '../order-management/order.service';
 import { CommunicationService } from '../../communication/communication.service';
-import { Order } from '../../shared/models/order.model'; // Assuming you have an Order model defined
 
 @Component({
   selector: 'app-order-management',
   templateUrl: './order-management.component.html',
-  styleUrls: ['./order-management.component.scss']
+  styleUrls: ['./order-management.component.scss'],
+  standalone: true,
+  imports: [
+    CommonModule,
+    FormsModule, // For [(ngModel)] with searchTerm
+    IonicModule,
+    RouterModule
+  ]
 })
-export class OrderManagementComponent implements OnInit {
+export class OrderManagementComponent implements OnInit, OnDestroy {
   allOrders: Order[] = [];
   filteredOrders: Order[] = [];
   isLoading = true;
-  activeFilter = 'all';
+  activeFilter = 'all'; // Corresponds to ion-segment value
   searchTerm = '';
+  errorMessage: string | null = null;
 
-  // Order statistics
+  // Define statuses for the update prompt
+  statuses = [
+    { value: 'pending', label: 'Pending' },
+    { value: 'processing', label: 'Processing' },
+    { value: 'shipped', label: 'Shipped' },
+    { value: 'delivered', label: 'Delivered' },
+    { value: 'cancelled', label: 'Cancelled' }
+  ];
+
   orderStats = {
     total: 0,
     pending: 0,
@@ -33,6 +53,10 @@ export class OrderManagementComponent implements OnInit {
     cancelled: 0
   };
 
+  private currentUser: User | null = null;
+  private authSubscription: Subscription | undefined;
+  private ordersSubscription: Subscription | undefined;
+
   constructor(
     private authService: AuthService,
     private orderService: OrderService,
@@ -41,28 +65,74 @@ export class OrderManagementComponent implements OnInit {
     private alertController: AlertController,
     private loadingController: LoadingController,
     private toastController: ToastController,
-    private modalController: ModalController
-  ) { }
+    private modalController: ModalController, // Keep if planning to use
+    private cdr: ChangeDetectorRef
+  ) {}
 
   ngOnInit() {
-    this.loadOrders();
-  }
-
-  loadOrders() {
-    this.isLoading = true;
-    this.authService.currentUser$.pipe(
-      first()
-    ).subscribe(user => {
-      if (user) {
-        this.orderService.getRetailerOrders(user.uid).subscribe(orders => {
-          this.allOrders = orders;
-          this.calculateOrderStatistics();
-          this.applyFilters();
-          this.isLoading = false;
-        });
+    this.authSubscription = this.authService.currentUser$.subscribe(user => {
+      this.currentUser = user;
+      if (user && user.uid) {
+        this.loadOrders();
       } else {
         this.isLoading = false;
+        this.allOrders = [];
+        this.filteredOrders = [];
+        this.calculateOrderStatistics();
+        this.errorMessage = "Please log in to manage orders.";
       }
+    });
+  }
+
+  async loadOrders(refresherEvent?: any) {
+    if (!this.currentUser || !this.currentUser.uid) {
+      this.isLoading = false;
+      this.errorMessage = "User not authenticated. Cannot load orders.";
+      if (refresherEvent) refresherEvent.target.complete();
+      return;
+    }
+
+    this.isLoading = true;
+    this.errorMessage = null;
+    let loader: HTMLIonLoadingElement | undefined;
+
+    if (!refresherEvent) {
+      // loader = await this.loadingController.create({ message: 'Loading orders...' });
+      // await loader.present();
+    }
+
+    if (this.ordersSubscription) {
+      this.ordersSubscription.unsubscribe();
+    }
+
+    this.ordersSubscription = this.orderService.getRetailerOrders(this.currentUser.uid).pipe(
+      finalize(async () => {
+        this.isLoading = false;
+        // if (loader) await loader.dismiss().catch(e => console.warn("Loader dismiss error", e));
+        if (refresherEvent) refresherEvent.target.complete();
+        this.cdr.detectChanges(); // Ensure UI updates
+      }),
+      catchError(error => {
+        console.error('Error loading orders:', error);
+        this.errorMessage = 'Could not load orders. Please try again.';
+        this.allOrders = [];
+        this.filteredOrders = [];
+        this.calculateOrderStatistics();
+        return of([]);
+      })
+    ).subscribe(orders => {
+      this.allOrders = orders.sort((a, b) => {
+        const getMs = (timestamp: any): number => {
+          if (!timestamp) return 0;
+          if (timestamp instanceof Date) return timestamp.getTime();
+          if (typeof timestamp.seconds === 'number') return new Date(timestamp.seconds * 1000 + (timestamp.nanoseconds || 0) / 1000000).getTime();
+          const d = new Date(timestamp);
+          return isNaN(d.getTime()) ? 0 : d.getTime();
+        };
+        return getMs(b.createdAt) - getMs(a.createdAt);
+      });
+      this.calculateOrderStatistics();
+      this.applyFilters();
     });
   }
 
@@ -76,98 +146,79 @@ export class OrderManagementComponent implements OnInit {
   }
 
   applyFilters() {
-    // Apply status filter
     let filtered = this.allOrders;
     if (this.activeFilter !== 'all') {
       filtered = filtered.filter(order => order.status === this.activeFilter);
     }
 
-    // Apply search filter if there is a search term
     if (this.searchTerm && this.searchTerm.trim() !== '') {
-      const term = this.searchTerm.toLowerCase();
+      const term = this.searchTerm.toLowerCase().trim();
       filtered = filtered.filter(order =>
-        order.id.toLowerCase().includes(term) ||
-        order.customerName.toLowerCase().includes(term) ||
-        (order.purchaseOrder && order.purchaseOrder.toLowerCase().includes(term))
+        order.id?.toLowerCase().includes(term) ||
+        order.customerName?.toLowerCase().includes(term) ||
+        (order.purchaseOrder && order.purchaseOrder.toLowerCase().includes(term)) ||
+        order.customerEmail?.toLowerCase().includes(term)
       );
     }
-
-    this.filteredOrders = filtered;
+    this.filteredOrders = [...filtered]; // Create new array reference for change detection
+    this.cdr.detectChanges();
   }
 
-  filterOrders(event: any) {
+  filterOrdersByStatus(event: any) {
     this.activeFilter = event.detail.value;
     this.applyFilters();
   }
 
-  searchOrders() {
+  searchOrders(event?: any) {
+    if (event && event.target) {
+        this.searchTerm = event.target.value || '';
+    }
     this.applyFilters();
   }
 
-  refreshOrders(event?: any) {
-    this.loadOrders();
-    if (event) {
-      event.target.complete();
+  clearSearch() {
+    this.searchTerm = '';
+    this.applyFilters();
+  }
+
+  doRefresh(event: any) {
+    if (this.currentUser && this.currentUser.uid) {
+        this.loadOrders(event);
+    } else {
+        this.showToast('Please log in to refresh orders.', 'warning');
+        if (event) event.target.complete();
     }
   }
 
-  viewOrderDetails(orderId: string) {
-    this.router.navigate(['/retailer/orders', orderId]);
+  viewOrderDetails(orderId: string | undefined) {
+    if (orderId) {
+      this.router.navigate(['/retailer/orders', orderId]);
+    }
   }
 
-  async updateOrderStatus(order: Order) {
+  async promptUpdateOrderStatus(order: Order) {
+    const alertInputs: any[] = this.statuses.map(s => ({
+        name: 'status', type: 'radio', label: s.label, value: s.value, checked: order.status === s.value
+    }));
+
     const alert = await this.alertController.create({
       header: 'Update Order Status',
-      inputs: [
-        { name: 'status', type: 'radio', label: 'Pending', value: 'pending', checked: order.status === 'pending' },
-        { name: 'status', type: 'radio', label: 'Processing', value: 'processing', checked: order.status === 'processing' },
-        { name: 'status', type: 'radio', label: 'Shipped', value: 'shipped', checked: order.status === 'shipped' },
-        { name: 'status', type: 'radio', label: 'Delivered', value: 'delivered', checked: order.status === 'delivered' },
-        { name: 'status', type: 'radio', label: 'Cancelled', value: 'cancelled', checked: order.status === 'cancelled' }
-      ],
+      inputs: alertInputs,
       buttons: [
         { text: 'Cancel', role: 'cancel' },
         {
           text: 'Next',
-          handler: async (data) => {
-            if (data === order.status) {
-              const toast = await this.toastController.create({
-                message: 'Order status is already ' + data,
-                duration: 2000,
-                color: 'warning'
-              });
-              toast.present();
-              return;
+          handler: async (selectedStatus) => {
+            if (!selectedStatus) {
+                this.showToast('Please select a status.', 'warning');
+                return false;
             }
-            
-            // Ask for update message
-            const messageAlert = await this.alertController.create({
-              header: 'Update Message',
-              message: 'Please provide a message for this status update:',
-              inputs: [
-                { name: 'message', type: 'textarea', placeholder: 'e.g., Your order has been shipped via UPS. Tracking #123456' }
-              ],
-              buttons: [
-                { text: 'Back', role: 'cancel' },
-                {
-                  text: 'Update',
-                  handler: async (messageData) => {
-                    if (!messageData.message) {
-                      const toast = await this.toastController.create({
-                        message: 'Please provide an update message',
-                        duration: 2000,
-                        color: 'danger'
-                      });
-                      toast.present();
-                      return false; // Prevent alert from closing
-                    }
-                    this.processOrderUpdate(order, data, messageData.message);
-                    return true;
-                  }
-                }
-              ]
-            });
-            await messageAlert.present();
+            if (selectedStatus === order.status) {
+              this.showToast(`Order status is already ${selectedStatus}.`, 'medium');
+              return false;
+            }
+            this.promptForUpdateMessage(order, selectedStatus);
+            return true;
           }
         }
       ]
@@ -175,64 +226,68 @@ export class OrderManagementComponent implements OnInit {
     await alert.present();
   }
 
-  async processOrderUpdate(order: Order, newStatus: Order['status'], message: string) {
-    const loading = await this.loadingController.create({
-      message: 'Updating order...',
-      spinner: 'crescent'
+  async promptForUpdateMessage(order: Order, newStatus: Order['status']) {
+    const messageAlert = await this.alertController.create({
+      header: 'Status Update Message',
+      message: 'Provide a message for the customer regarding this update.',
+      inputs: [ { name: 'message', type: 'textarea', placeholder: 'Your message to the customer...' } ],
+      buttons: [
+        { text: 'Back', role: 'cancel', handler: () => { this.promptUpdateOrderStatus(order); } },
+        {
+          text: 'Update Order',
+          handler: async (messageData) => {
+            if (!messageData.message || messageData.message.trim() === '') {
+              this.showToast('An update message is required.', 'warning');
+              return false;
+            }
+            this.processOrderUpdate(order, newStatus, messageData.message.trim());
+            return true;
+          }
+        }
+      ]
     });
-    await loading.present();
+    await messageAlert.present();
+  }
 
+  async processOrderUpdate(order: Order, newStatus: Order['status'], message: string) {
+    const loading = await this.loadingController.create({ message: 'Updating order...' });
+    await loading.present();
     try {
       await this.orderService.updateOrderStatus(order, newStatus, message);
-      await loading.dismiss();
-      
-      const toast = await this.toastController.create({
-        message: 'Order updated successfully',
-        duration: 2000,
-        color: 'success'
-      });
-      toast.present();
-
-      // Create notification for customer
-      this.communicationService.createOrderStatusNotification(
-        order.customerId,
-        order.id,
-        newStatus,
-        message
-      ).subscribe();
+      this.showToast('Order updated successfully!', 'success');
+      if (order.customerId && order.id) {
+        firstValueFrom(this.communicationService.createOrderStatusNotification(
+          order.customerId, order.id, newStatus, message
+        )).catch(err => console.error('Failed to send order status notification:', err));
+      }
+      this.loadOrders(); // Refresh
     } catch (error: any) {
-      await loading.dismiss();
-      const toast = await this.toastController.create({
-        message: error.message || 'Failed to update order',
-        duration: 3000,
-        color: 'danger'
-      });
-      toast.present();
+      this.showErrorAlert('Update Failed', error.message || 'Failed to update order status.');
+    } finally {
+      await loading.dismiss().catch(e => console.warn("Loader dismiss error", e));
     }
   }
 
-  async cancelOrder(order: Order) {
+  async confirmCancelOrder(order: Order) {
+    if (order.status === 'cancelled' || order.status === 'delivered') {
+        this.showToast(`Order is already ${order.status} and cannot be cancelled.`, 'medium');
+        return;
+    }
     const alert = await this.alertController.create({
       header: 'Cancel Order',
       message: 'Please provide a reason for cancellation:',
-      inputs: [
-        { name: 'reason', type: 'textarea', placeholder: 'e.g., Items out of stock, order placed in error' }
-      ],
+      inputs: [ { name: 'reason', type: 'textarea', placeholder: 'e.g., Items out of stock' } ],
       buttons: [
         { text: 'Back', role: 'cancel' },
         {
-          text: 'Confirm',
+          text: 'Confirm Cancellation',
+          cssClass: 'alert-button-danger',
           handler: async (data) => {
-            if (!data.reason) {
-              const toast = await this.toastController.create({
-                message: 'Please provide a cancellation reason',
-                duration: 2000,
-                color: 'danger'
-              });
-              toast.present();
-              return false; // Prevent alert from closing
+            if (!data.reason || data.reason.trim() === '') {
+              this.showToast('A cancellation reason is required.', 'warning');
+              return false;
             }
-            this.processOrderUpdate(order, 'cancelled', data.reason);
+            this.processOrderUpdate(order, 'cancelled', data.reason.trim());
             return true;
           }
         }
@@ -242,14 +297,25 @@ export class OrderManagementComponent implements OnInit {
   }
 
   communicateWithCustomer(order: Order) {
-    // Navigate to the chat with this customer
-    this.router.navigate(['/communication/chat', order.customerId]);
+    if (order.customerId) {
+      this.router.navigate(['/communication/chat', order.customerId]);
+    } else {
+      this.showToast('Customer ID not available for this order.', 'warning');
+    }
   }
 
-  formatDate(date: any): string {
-    if (!date) return '';
-    const d = new Date(date.seconds ? date.seconds * 1000 : date);
-    return d.toLocaleDateString();
+  formatDate(dateInput: any): string {
+    if (!dateInput) return 'N/A';
+    let d: Date;
+    if (dateInput && typeof dateInput.seconds === 'number') {
+      d = new Date(dateInput.seconds * 1000 + (dateInput.nanoseconds || 0) / 1000000);
+    } else if (dateInput instanceof Date) {
+      d = dateInput;
+    } else {
+      d = new Date(dateInput);
+    }
+    if (isNaN(d.getTime())) return 'Invalid Date';
+    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 
   getStatusColor(status: string): string {
@@ -264,60 +330,52 @@ export class OrderManagementComponent implements OnInit {
   }
 
   async exportOrders() {
-    // Export orders as CSV
+    if (this.filteredOrders.length === 0) {
+        this.showToast('No orders to export based on current filters.', 'medium');
+        return;
+    }
     const csvContent = this.generateOrdersCSV();
-    this.downloadCSV(csvContent, 'orders-export.csv');
-    const toast = await this.toastController.create({
-      message: 'Orders exported successfully',
-      duration: 2000,
-      color: 'success'
-    });
-    toast.present();
+    this.downloadCSV(csvContent, `orders-export-${new Date().toISOString().split('T')[0]}.csv`);
+    this.showToast('Orders exported successfully.', 'success');
   }
 
-  generateOrdersCSV(): string {
-    const headers = ['Order ID', 'Customer', 'Status', 'Date', 'PO Number'];
+  private generateOrdersCSV(): string {
+    const headers = ['Order ID', 'Customer Name', 'Customer Email', 'Status', 'Date Created', 'Total Amount', 'PO Number'];
     const rows = this.filteredOrders.map(order => {
       const date = this.formatDate(order.createdAt);
       return [
-        order.id,
-        order.customerName,
-        order.status.toUpperCase(),
+        order.id || '',
+        order.customerName || '',
+        order.customerEmail || '', // Ensure Order interface has customerEmail
+        order.status?.toUpperCase() || '',
         date,
+        order.totalAmount || 0, // Ensure Order interface has totalAmount
         order.purchaseOrder || 'N/A'
-      ];
+      ].map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`); // Handle null/undefined cells
     });
-
-    let csvContent = headers.join(',') + '\n';
-    rows.forEach(row => {
-      const escapedRow = row.map(cell => `"${cell.toString().replace(/"/g, '""')}"`);
-      csvContent += escapedRow.join(',') + '\n';
-    });
-
-    return csvContent;
+    return [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
   }
 
-  downloadCSV(csvContent: string, filename: string) {
+  private downloadCSV(csvContent: string, filename: string) {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
-
-  refreshOrderStatistics() {
-    this.calculateOrderStatistics();
-    this.presentStatisticsAlert();
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } else {
+        this.showErrorAlert('Export Failed', 'CSV download is not supported by your browser.');
+    }
   }
 
   async presentStatisticsAlert() {
     const alert = await this.alertController.create({
         header: 'Order Statistics',
-        // Correctly formatted multi-line message using template literals
         message: `
             Total Orders: ${this.orderStats.total}<br>
             Pending: ${this.orderStats.pending}<br>
@@ -332,7 +390,26 @@ export class OrderManagementComponent implements OnInit {
   }
 
   viewOrderAnalytics() {
-    // In a real application, this would navigate to a detailed analytics page
     this.router.navigate(['/retailer/analytics']);
   }
+
+  async showToast(message: string, color: 'success' | 'warning' | 'danger' | string = 'medium', duration: number = 3000) {
+    const toast = await this.toastController.create({ message, duration, color, position: 'top' });
+    toast.present();
+  }
+
+  async showErrorAlert(header: string, message: string) {
+    const alert = await this.alertController.create({ header, message, buttons: ['OK'] });
+    await alert.present();
+  }
+
+  ngOnDestroy() {
+    if (this.authSubscription) {
+      this.authSubscription.unsubscribe();
+    }
+    if (this.ordersSubscription) {
+      this.ordersSubscription.unsubscribe();
+    }
+  }
 }
+

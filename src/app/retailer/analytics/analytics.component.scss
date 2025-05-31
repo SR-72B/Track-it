@@ -1,0 +1,117 @@
+// src/app/retailer/analytics/analytics.component.scss
+.analytics-content {
+  --padding-bottom: 20px;
+}
+
+.loading-container,
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  text-align: center;
+  padding: 20px;
+
+  ion-spinner {
+    margin-bottom: 16px;
+    width: 40px;
+    height: 40px;
+  }
+
+  p {
+    color: var(--ion-color-medium-shade);
+    font-size: 1.1em;
+    margin-top: 8px;
+  }
+
+  .error-icon {
+    font-size: 3.5em;
+    margin-bottom: 8px;
+  }
+
+  ion-button {
+    margin-top: 20px;
+    --border-radius: 8px;
+  }
+}
+
+.key-metrics-row {
+  margin-bottom: 16px;
+}
+
+.metric-card {
+  text-align: center;
+  --background: var(--ion-color-light-tint); // Slightly different background for metric cards
+  border-radius: 12px;
+  box-shadow: var(--card-shadow, 0 2px 8px rgba(0, 0, 0, 0.06));
+  height: 100%; // Make cards in a row same height
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+
+  ion-card-header {
+    padding: 16px;
+  }
+
+  ion-card-subtitle {
+    font-size: 0.9em;
+    color: var(--ion-color-medium-shade);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  ion-card-title {
+    font-size: 2em;
+    font-weight: 700;
+    color: var(--ion-color-primary); // Use primary color for metric values
+  }
+}
+
+.data-section-card {
+  margin-bottom: 24px;
+  border-radius: 12px;
+  box-shadow: var(--card-shadow, 0 4px 15px rgba(0, 0, 0, 0.08));
+
+  ion-card-header {
+    border-bottom: 1px solid var(--ion-color-step-150, #e0e0e0);
+  }
+  ion-card-title {
+    font-size: 1.3em;
+  }
+}
+
+.status-item {
+  --padding-start: 0;
+  --inner-padding-end: 0;
+  font-size: 0.95em;
+
+  ion-label {
+    font-weight: 500;
+    text-transform: capitalize;
+  }
+
+  .status-count {
+    color: var(--ion-color-medium-shade);
+  }
+
+  // Dynamically apply status colors if needed, or use ion-text color attribute
+  &.status-pending ion-label { color: var(--ion-color-warning-shade); }
+  &.status-processing ion-label { color: var(--ion-color-primary-shade); }
+  &.status-shipped ion-label { color: var(--ion-color-tertiary-shade); }
+  &.status-delivered ion-label { color: var(--ion-color-success-shade); }
+  &.status-completed ion-label { color: var(--ion-color-success-shade); }
+  &.status-cancelled ion-label { color: var(--ion-color-danger-shade); }
+  &.status-other ion-label { color: var(--ion-color-medium-shade); }
+}
+
+.chart-container {
+  position: relative;
+  margin: auto;
+  height: 300px; // Adjust as needed
+  width: 100%;
+  max-width: 600px; // Max width for larger charts
+  padding: 16px 0;
+}

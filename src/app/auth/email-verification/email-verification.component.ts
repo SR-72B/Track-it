@@ -1,14 +1,15 @@
 // src/app/auth/email-verification/email-verification.component.ts
-import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute, Router, RouterModule } from '@angular/router'; // RouterModule added for router directives if used in template
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
-import { AlertController, IonicModule } from '@ionic/angular'; // IonicModule added
-import { CommonModule } from '@angular/common'; // CommonModule added for *ngIf, etc.
+import { AlertController, IonicModule } from '@ionic/angular';
+import { CommonModule } from '@angular/common';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-email-verification',
   templateUrl: './email-verification.component.html', // Ensure this file exists
-  styleUrls: ['./email-verification.component.scss'], // Ensure this file exists
+  styleUrls: ['./email-verification.component.scss'],   // Ensure this file exists
   standalone: true, // Mark component as standalone
   imports: [
     CommonModule,     // For *ngIf, *ngFor, async pipe, etc.
@@ -16,10 +17,12 @@ import { CommonModule } from '@angular/common'; // CommonModule added for *ngIf,
     RouterModule      // For routerLink, routerOutlet (if used directly in this component's template)
   ]
 })
-export class EmailVerificationComponent implements OnInit {
+export class EmailVerificationComponent implements OnInit, OnDestroy {
   verifying = true;
   verified = false;
   error: string | null = null;
+
+  private queryParamsSubscription: Subscription | undefined;
 
   constructor(
     private route: ActivatedRoute,
@@ -29,7 +32,7 @@ export class EmailVerificationComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.route.queryParams.subscribe(params => {
+    this.queryParamsSubscription = this.route.queryParams.subscribe(params => {
       const oobCode = params['oobCode'];
       if (oobCode) {
         this.verifyEmail(oobCode);
@@ -43,7 +46,7 @@ export class EmailVerificationComponent implements OnInit {
 
   async verifyEmail(code: string) {
     this.verifying = true;
-    this.error = null;
+    this.error = null; // Reset error before attempting
     try {
       await this.afAuth.applyActionCode(code);
       this.verified = true;
@@ -64,9 +67,9 @@ export class EmailVerificationComponent implements OnInit {
       });
       await alert.present();
     } catch (err: any) {
-      this.error = err.message || 'An unknown error occurred during email verification.';
+      this.error = err.message || 'An unknown error occurred during email verification. The link may be invalid or expired.';
       this.verifying = false;
-      this.verified = false;
+      this.verified = false; // Ensure verified is false on error
       this.showErrorAlert(this.error);
     }
   }
@@ -79,4 +82,12 @@ export class EmailVerificationComponent implements OnInit {
     });
     await alert.present();
   }
+
+  ngOnDestroy() {
+    // Unsubscribe from observables to prevent memory leaks
+    if (this.queryParamsSubscription) {
+      this.queryParamsSubscription.unsubscribe();
+    }
+  }
 }
+
