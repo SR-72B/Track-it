@@ -1,13 +1,14 @@
 // src/app/retailer/form-builder/form-builder.service.ts
 import { Injectable } from '@angular/core';
-import { AngularFirestore } from '@angular/fire/compat/firestore';
-import { Observable, from, of } from 'rxjs'; // Added 'of' for error handling
-import { map, catchError } from 'rxjs/operators'; // Added 'catchError'
+import { AngularFirestore, AngularFirestoreCollection } from '@angular/fire/compat/firestore';
+import { Observable, from, of } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
 import { AuthService } from '../../auth/auth.service'; // Assuming AuthService is correctly located
+import firebase from 'firebase/compat/app'; // Import for FieldValue serverTimestamp
 
 export interface FormField {
   id: string; // Consider making this optional if generated dynamically or using array index
-  type: 'text' | 'email' | 'phone' | 'radio' | 'upload' | 'textarea' | 'checkbox' | 'date' | 'number'; // Added more types
+  type: 'text' | 'email' | 'phone' | 'radio' | 'upload' | 'textarea' | 'checkbox' | 'date' | 'number';
   label: string;
   required: boolean;
   options?: string[]; // For radio buttons, dropdowns
@@ -15,8 +16,7 @@ export interface FormField {
   placeholder?: string;
   defaultValue?: any;
   validationPatterns?: { pattern: string, message: string }[]; // For custom regex validation
-  // For file uploads
-  maxFileSizeMB?: number;
+  maxFileSizeMB?: number; // For file uploads
 }
 
 export interface OrderForm {
@@ -26,8 +26,8 @@ export interface OrderForm {
   description?: string;
   fields: FormField[];
   active: boolean; // Whether the form is available for customers
-  createdAt: any; // Firestore Timestamp or Date
-  updatedAt: any; // Firestore Timestamp or Date
+  createdAt: any; // firebase.firestore.FieldValue | Date; (will be server timestamp)
+  updatedAt: any; // firebase.firestore.FieldValue | Date; (will be server timestamp)
   allowFileUpload: boolean;
   allowedFileTypes: string[]; // e.g., ['image/png', 'application/pdf'] - use MIME types
   maxFilesAllowed?: number;
@@ -39,47 +39,55 @@ export interface OrderForm {
   providedIn: 'root'
 })
 export class FormBuilderService {
+  private orderFormsCollection: AngularFirestoreCollection<OrderForm>;
+
   constructor(
     private firestore: AngularFirestore,
     private authService: AuthService // Keep if retailerId needs to be auto-filled or for permissions
-  ) {}
+  ) {
+    this.orderFormsCollection = this.firestore.collection<OrderForm>('orderForms');
+  }
 
   /**
    * Create a new order form.
-   * @param form Partial form data, retailerId should be pre-filled.
-   * @returns Promise with the created form ID.
+   * @param formPartialData Partial form data, retailerId should be pre-filled by component.
+   * @returns Promise with the created OrderForm object (including ID and server timestamps).
    */
-  createOrderForm(form: Partial<OrderForm>): Promise<string> {
+  async createOrderForm(formPartialData: Omit<OrderForm, 'id' | 'createdAt' | 'updatedAt'>): Promise<OrderForm> {
     const formId = this.firestore.createId();
-    const now = new Date(); // Will be converted to Firestore Timestamp
+    const serverTimestamp = firebase.firestore.FieldValue.serverTimestamp();
 
-    // Ensure retailerId is provided
-    if (!form.retailerId) {
-      return Promise.reject(new Error('Retailer ID is required to create a form.'));
+    if (!formPartialData.retailerId) {
+      // Attempt to get current user's retailerId if not provided, or throw error
+      // This depends on your app's logic. For now, we'll assume it must be provided.
+      throw new Error('Retailer ID is required to create a form.');
     }
 
-    const orderForm: OrderForm = {
-      id: formId, // This will be overridden by idField if valueChanges({idField:'id'}) is used on retrieval
-      retailerId: form.retailerId,
-      title: form.title || 'New Order Form',
-      description: form.description || '',
-      fields: form.fields || [],
-      active: form.active !== undefined ? form.active : false, // Default to inactive until explicitly published
-      createdAt: now,
-      updatedAt: now,
-      allowFileUpload: form.allowFileUpload || false,
-      allowedFileTypes: form.allowedFileTypes || ['image/jpeg', 'image/png', 'application/pdf'],
-      maxFilesAllowed: form.maxFilesAllowed || 1,
-      cancellationPolicy: form.cancellationPolicy || 'Default cancellation policy applies.',
-      submissionInstructions: form.submissionInstructions || 'Your order will be processed upon submission.'
+    const newFormData: OrderForm = {
+      id: formId, // Set the ID for the object we'll return
+      ...formPartialData, // Spread the data from the component
+      active: formPartialData.active !== undefined ? formPartialData.active : true, // Default to active
+      createdAt: serverTimestamp,
+      updatedAt: serverTimestamp,
+      // Ensure all required fields of OrderForm are present, using defaults if necessary from formPartialData
+      // For example, if fields isn't in formPartialData, you might want a default:
+      fields: formPartialData.fields || [],
+      allowFileUpload: formPartialData.allowFileUpload || false,
+      allowedFileTypes: formPartialData.allowedFileTypes || ['image/jpeg', 'image/png', 'application/pdf'],
     };
 
-    return this.firestore.collection('orderForms').doc(formId).set(orderForm)
-      .then(() => formId)
-      .catch(error => {
-        console.error("Error creating order form:", error);
-        throw error;
-      });
+    try {
+      await this.orderFormsCollection.doc(formId).set(newFormData);
+      // To return the object with actual server-generated timestamps resolved as Dates,
+      // you would typically fetch it after setting, or accept that the returned object
+      // has FieldValue sentinels if you try to use createdAt/updatedAt immediately.
+      // For simplicity in returning the ID and the shape, we return newFormData.
+      // The component will get the resolved timestamps when it subscribes to getOrderForm or getRetailerForms.
+      return newFormData; // Contains the ID and the data sent (timestamps are server-side)
+    } catch (error) {
+      console.error("Error creating order form in Firestore:", error);
+      throw error; // Re-throw to be caught by the component
+    }
   }
 
   /**
@@ -88,16 +96,19 @@ export class FormBuilderService {
    * @param updates Partial form data to update.
    * @returns Promise<void>.
    */
-  updateOrderForm(formId: string, updates: Partial<OrderForm>): Promise<void> {
+  async updateOrderForm(formId: string, updates: Partial<OrderForm>): Promise<void> {
     if (!formId) {
       return Promise.reject(new Error('Form ID is required for update.'));
     }
-    updates.updatedAt = new Date(); // Will be converted to Firestore Timestamp
-    return this.firestore.collection('orderForms').doc(formId).update(updates)
-      .catch(error => {
-        console.error("Error updating order form:", formId, error);
-        throw error;
-      });
+    const serverTimestamp = firebase.firestore.FieldValue.serverTimestamp();
+    const updateData = { ...updates, updatedAt: serverTimestamp };
+
+    try {
+      return await this.orderFormsCollection.doc(formId).update(updateData);
+    } catch (error) {
+      console.error("Error updating order form:", formId, error);
+      throw error;
+    }
   }
 
   /**
@@ -110,17 +121,14 @@ export class FormBuilderService {
       console.warn('Form ID not provided for getOrderForm.');
       return of(null);
     }
-    return this.firestore.collection('orderForms').doc<OrderForm>(formId)
+    return this.orderFormsCollection.doc<OrderForm>(formId)
       .valueChanges({ idField: 'id' }) // Map Firestore document ID to 'id' property
       .pipe(
         map(form => {
           if (!form) {
-            console.warn(`Form with ID ${formId} not found.`);
+            // console.warn(`Form with ID ${formId} not found.`); // Can be noisy if form legitimately doesn't exist yet
             return null;
           }
-          // Optionally convert Timestamps to Dates here if needed globally
-          // form.createdAt = form.createdAt?.toDate ? form.createdAt.toDate() : form.createdAt;
-          // form.updatedAt = form.updatedAt?.toDate ? form.updatedAt.toDate() : form.updatedAt;
           return form;
         }),
         catchError(error => {
@@ -142,11 +150,11 @@ export class FormBuilderService {
     }
     return this.firestore.collection<OrderForm>('orderForms', ref =>
       ref.where('retailerId', '==', retailerId).orderBy('createdAt', 'desc')
-    ).valueChanges({ idField: 'id' }) // Map Firestore document ID to 'id' property
+    ).valueChanges({ idField: 'id' })
     .pipe(
       catchError(error => {
         console.error(`Error fetching forms for retailer ${retailerId}:`, error);
-        return of([]); // Return empty array on error
+        return of([]);
       })
     );
   }
@@ -157,31 +165,31 @@ export class FormBuilderService {
    */
   getActiveForms(): Observable<OrderForm[]> {
     return this.firestore.collection<OrderForm>('orderForms', ref =>
-      ref.where('active', '==', true).orderBy('title', 'asc') // Example: order by title
-    ).valueChanges({ idField: 'id' }) // Map Firestore document ID to 'id' property
+      ref.where('active', '==', true).orderBy('title', 'asc')
+    ).valueChanges({ idField: 'id' })
     .pipe(
       catchError(error => {
         console.error('Error fetching active forms:', error);
-        return of([]); // Return empty array on error
+        return of([]);
       })
     );
   }
-
 
   /**
    * Delete an order form.
    * @param formId The ID of the form to delete.
    * @returns Promise<void>.
    */
-  deleteOrderForm(formId: string): Promise<void> {
+  async deleteOrderForm(formId: string): Promise<void> {
     if (!formId) {
       return Promise.reject(new Error('Form ID is required for deletion.'));
     }
-    return this.firestore.collection('orderForms').doc(formId).delete()
-      .catch(error => {
-        console.error("Error deleting order form:", formId, error);
-        throw error;
-      });
+    try {
+      return await this.orderFormsCollection.doc(formId).delete();
+    } catch (error) {
+      console.error("Error deleting order form:", formId, error);
+      throw error;
+    }
   }
 }
 

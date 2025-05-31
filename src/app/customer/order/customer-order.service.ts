@@ -3,8 +3,8 @@ import { Injectable } from '@angular/core';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { AngularFireStorage } from '@angular/fire/compat/storage';
 import { Observable, combineLatest, from, of } from 'rxjs';
-import { map, switchMap, tap } from 'rxjs/operators';
-import { AuthService } from '../../auth/auth.service';
+import { map, switchMap, first, last } from 'rxjs/operators';
+import { AuthService, User } from '../../auth/auth.service';
 import { OrderForm } from '../../retailer/form-builder/form-builder.service';
 import { Order, OrderUpdate } from '../../retailer/order-management/order.service';
 
@@ -21,39 +21,27 @@ export class CustomerOrderService {
   getActiveForms(): Observable<OrderForm[]> {
     return this.firestore.collection<OrderForm>('orderForms', ref => 
       ref.where('active', '==', true)
-    ).valueChanges();
+    ).valueChanges({ idField: 'id' });
   }
 
-  getOrderForm(formId: string): Observable<OrderForm> {
-    return this.firestore.collection('orderForms').doc<OrderForm>(formId).valueChanges()
-      .pipe(
-        map(form => {
-          if (!form) throw new Error('Form not found');
-          return form;
-        })
-      );
+  getOrderForm(formId: string): Observable<OrderForm | undefined> {
+    return this.firestore.collection('orderForms').doc<OrderForm>(formId).valueChanges();
   }
 
   getCustomerOrders(customerId: string): Observable<Order[]> {
     return this.firestore.collection<Order>('orders', ref => 
       ref.where('customerId', '==', customerId).orderBy('createdAt', 'desc')
-    ).valueChanges();
+    ).valueChanges({ idField: 'id' });
   }
 
-  getOrder(orderId: string): Observable<Order> {
-    return this.firestore.collection('orders').doc<Order>(orderId).valueChanges()
-      .pipe(
-        map(order => {
-          if (!order) throw new Error('Order not found');
-          return order;
-        })
-      );
+  getOrder(orderId: string): Observable<Order | undefined> {
+    return this.firestore.collection('orders').doc<Order>(orderId).valueChanges({ idField: 'id' });
   }
 
   getOrderUpdates(orderId: string): Observable<OrderUpdate[]> {
     return this.firestore.collection<OrderUpdate>('orderUpdates', ref => 
       ref.where('orderId', '==', orderId).orderBy('createdAt', 'desc')
-    ).valueChanges();
+    ).valueChanges({ idField: 'id' });
   }
 
   getOrderWithUpdates(orderId: string): Observable<{order: Order, updates: OrderUpdate[]}> {
@@ -61,43 +49,38 @@ export class CustomerOrderService {
       this.getOrder(orderId),
       this.getOrderUpdates(orderId)
     ]).pipe(
-      map(([order, updates]) => ({order, updates}))
+      map(([order, updates]) => {
+        if (!order) throw new Error('Order not found in combined stream');
+        return { order, updates };
+      })
     );
   }
 
   async submitOrder(formId: string, formData: any, files: File[] = []): Promise<string> {
-    // Get the current user
     const user = await this.authService.currentUser$.pipe(first()).toPromise();
     if (!user) throw new Error('User not authenticated');
     
-    // Get the form to identify the retailer
     const form = await this.getOrderForm(formId).pipe(first()).toPromise();
+    if (!form) throw new Error('Form configuration not found');
     
-    // Upload files if any
     const fileUrls: string[] = [];
-    
     if (files.length > 0) {
       for (const file of files) {
         const path = `orders/${user.uid}/${Date.now()}_${file.name}`;
         const fileRef = this.storage.ref(path);
         const task = this.storage.upload(path, file);
         
-        // Wait for the upload to complete
-        await task.snapshotChanges().pipe(
+        const url = await task.snapshotChanges().pipe(
           last(),
           switchMap(() => fileRef.getDownloadURL())
-        ).toPromise().then(url => {
-          fileUrls.push(url);
-        });
+        ).toPromise();
+        fileUrls.push(url);
       }
     }
     
-    // Create the order
     const orderId = this.firestore.createId();
     const now = new Date();
     
-    // Calculate cancellation deadline based on retailer's policy
-    // For this example, we'll set it to 24 hours from now
     const cancellationDeadline = new Date();
     cancellationDeadline.setHours(cancellationDeadline.getHours() + 24);
     
@@ -118,7 +101,6 @@ export class CustomerOrderService {
       cancellationDeadline
     };
     
-    // Create an initial order update
     const updateId = this.firestore.createId();
     const update: OrderUpdate = {
       id: updateId,
@@ -129,7 +111,6 @@ export class CustomerOrderService {
       seenByCustomer: true
     };
     
-    // Use a batch write to create both documents
     const batch = this.firestore.firestore.batch();
     batch.set(this.firestore.collection('orders').doc(orderId).ref, order);
     batch.set(this.firestore.collection('orderUpdates').doc(updateId).ref, update);
@@ -143,27 +124,32 @@ export class CustomerOrderService {
     return this.getOrder(orderId).pipe(
       first(),
       switchMap(order => {
-        // Check if past the cancellation deadline
+        if (!order) {
+            throw new Error('Order not found or you do not have permission to view it.');
+        }
+
         const now = new Date();
-        const deadline = new Date(order.cancellationDeadline.seconds ? 
-          order.cancellationDeadline.seconds * 1000 : 
-          order.cancellationDeadline);
+
+        // =========================================================================================
+        // !!! FIX APPLIED HERE !!!
+        // Data from Firestore is a Timestamp object, not a JS Date object.
+        // We cast it to 'any' to access the 'seconds' property and convert it to a Date.
+        // =========================================================================================
+        const deadlineTimestamp = order.cancellationDeadline as any;
+        const deadline = new Date(deadlineTimestamp.seconds * 1000);
         
         if (now > deadline) {
           throw new Error('Cancellation deadline has passed');
         }
         
-        // Update order status
         const batch = this.firestore.firestore.batch();
         
-        // Update the order
         const orderRef = this.firestore.collection('orders').doc(order.id).ref;
         batch.update(orderRef, { 
           status: 'cancelled', 
           updatedAt: now 
         });
         
-        // Create an order update
         const updateId = this.firestore.createId();
         const updateRef = this.firestore.collection('orderUpdates').doc(updateId).ref;
         const update: OrderUpdate = {
@@ -184,7 +170,7 @@ export class CustomerOrderService {
   markUpdatesSeen(orderId: string): Observable<void> {
     return this.getOrderUpdates(orderId).pipe(
       first(),
-      switchMap(updates => {
+      switchMap((updates: OrderUpdate[]) => {
         const batch = this.firestore.firestore.batch();
         const unseenUpdates = updates.filter(update => !update.seenByCustomer);
         

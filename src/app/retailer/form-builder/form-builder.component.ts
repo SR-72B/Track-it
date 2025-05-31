@@ -1,10 +1,11 @@
 // src/app/retailer/form-builder/form-builder.component.ts
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, FormArray, Validators, FormControl } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AlertController, LoadingController, ToastController } from '@ionic/angular';
-import { AuthService } from '../../auth/auth.service';
+import { AuthService, User } from '../../auth/auth.service';
 import { FormBuilderService, OrderForm, FormField } from './form-builder.service';
+import { first, filter } from 'rxjs/operators';
 
 @Component({
   selector: 'app-form-builder',
@@ -21,11 +22,18 @@ export class FormBuilderComponent implements OnInit {
     { value: 'email', label: 'Email Field' },
     { value: 'phone', label: 'Phone Number' },
     { value: 'radio', label: 'Multiple Choice' },
-    { value: 'upload', label: 'File Upload' }
+    { value: 'upload', label: 'File Upload' },
+    { value: 'textarea', label: 'Text Area' },
+    { value: 'checkbox', label: 'Checkbox Group' },
+    { value: 'date', label: 'Date Picker' },
+    { value: 'number', label: 'Number Input' }
   ];
-  allowedFileTypes = [
-    { value: 'png', label: 'PNG Images' },
-    { value: 'heic', label: 'HEIC Images' }
+
+  availableFileTypesForSelection = [
+    { value: 'image/png', label: 'PNG Images (.png)' },
+    { value: 'image/jpeg', label: 'JPEG Images (.jpg, .jpeg)' },
+    { value: 'application/pdf', label: 'PDF Documents (.pdf)' },
+    { value: 'image/heic', label: 'HEIC Images (.heic)' }
   ];
 
   constructor(
@@ -57,54 +65,51 @@ export class FormBuilderComponent implements OnInit {
       description: [''],
       fields: this.fb.array([]),
       allowFileUpload: [false],
-      allowedFileTypes: this.fb.array([]),
-      cancellationPolicy: ['Orders can be cancelled within 24 hours of submission.']
+      allowedFileTypes: this.fb.array([]), // Will store selected file type strings (MIME types)
+      maxFilesAllowed: [1, [Validators.min(1)]],
+      cancellationPolicy: ['Orders can be cancelled within 24 hours of submission.'],
+      submissionInstructions: ['Please review your order carefully before submitting.']
     });
   }
 
   async loadForm(formId: string) {
-    const loading = await this.loadingController.create({
-      message: 'Loading form...',
-      spinner: 'crescent'
-    });
+    const loading = await this.loadingController.create({ message: 'Loading form...', spinner: 'crescent' });
     await loading.present();
 
     try {
-      this.formBuilderService.getOrderForm(formId).subscribe(form => {
-        this.formBuilderForm.patchValue({
-          title: form.title,
-          description: form.description || '',
-          allowFileUpload: form.allowFileUpload,
-          cancellationPolicy: form.cancellationPolicy || 'Orders can be cancelled within 24 hours of submission.'
-        });
+      this.formBuilderService.getOrderForm(formId).pipe(first(form => form !== undefined)).subscribe(form => { // Ensure form is not undefined
+        if (form) { 
+            this.formBuilderForm.patchValue({
+                title: form.title,
+                description: form.description || '',
+                allowFileUpload: form.allowFileUpload || false, 
+                cancellationPolicy: form.cancellationPolicy || 'Orders can be cancelled within 24 hours of submission.',
+                submissionInstructions: form.submissionInstructions || 'Please review your order carefully before submitting.',
+                maxFilesAllowed: form.maxFilesAllowed || 1,
+                active: form.active !== undefined ? form.active : true // Assuming you might add an 'active' field to the form
+            });
 
-        // Clear and rebuild the fields array
-        const fieldsArray = this.formBuilderForm.get('fields') as FormArray;
-        while (fieldsArray.length) {
-          fieldsArray.removeAt(0);
+            const fieldsArray = this.formBuilderForm.get('fields') as FormArray;
+            while (fieldsArray.length) { fieldsArray.removeAt(0); }
+            form.fields?.forEach(field => { this.addField(field); });
+
+            const fileTypesArray = this.formBuilderForm.get('allowedFileTypes') as FormArray;
+            while (fileTypesArray.length) { fileTypesArray.removeAt(0); }
+            form.allowedFileTypes?.forEach(type => { fileTypesArray.push(this.fb.control(type)); });
+        } else {
+            this.toastController.create({ message: 'Form not found.', duration: 3000, color: 'danger' }).then(t => t.present());
+            this.router.navigate(['/retailer/forms']);
         }
-
-        // Add each field
-        form.fields.forEach(field => {
-          this.addField(field);
-        });
-
-        // Set allowed file types
-        const fileTypesArray = this.formBuilderForm.get('allowedFileTypes') as FormArray;
-        while (fileTypesArray.length) {
-          fileTypesArray.removeAt(0);
-        }
-
-        form.allowedFileTypes.forEach(type => {
-          fileTypesArray.push(this.fb.control(type));
-        });
-
         loading.dismiss();
+      }, async error => { 
+        await loading.dismiss();
+        this.toastController.create({ message: 'Failed to load form data: ' + (error.message || 'Unknown error'), duration: 3000, color: 'danger' }).then(t => t.present());
+        this.router.navigate(['/retailer/forms']);
       });
-    } catch (error) {
+    } catch (error: any) { 
       await loading.dismiss();
       const toast = await this.toastController.create({
-        message: 'Failed to load form: ' + error.message,
+        message: 'Failed to initiate form loading: ' + (error.message || 'Unknown error'),
         duration: 3000,
         color: 'danger'
       });
@@ -113,11 +118,11 @@ export class FormBuilderComponent implements OnInit {
     }
   }
 
-  get fields() {
+  get fields(): FormArray {
     return this.formBuilderForm.get('fields') as FormArray;
   }
 
-  get allowedFileTypes() {
+  get formAllowedFileTypes(): FormArray {
     return this.formBuilderForm.get('allowedFileTypes') as FormArray;
   }
 
@@ -128,9 +133,12 @@ export class FormBuilderComponent implements OnInit {
       label: [existingField?.label || '', Validators.required],
       required: [existingField?.required || false],
       description: [existingField?.description || ''],
-      options: this.fb.array(existingField?.options?.map(option => this.fb.control(option)) || [])
+      placeholder: [existingField?.placeholder || ''],
+      defaultValue: [existingField?.defaultValue || ''],
+      options: this.fb.array(existingField?.options?.map(option => this.fb.control(option)) || []),
+      validationPatterns: this.fb.array(existingField?.validationPatterns?.map(vp => this.fb.group(vp)) || []),
+      maxFileSizeMB: [existingField?.maxFileSizeMB || 5]
     });
-
     this.fields.push(fieldGroup);
   }
 
@@ -138,104 +146,141 @@ export class FormBuilderComponent implements OnInit {
     this.fields.removeAt(index);
   }
 
-  getOptions(fieldIndex: number) {
+  getOptions(fieldIndex: number): FormArray { 
     return (this.fields.at(fieldIndex).get('options') as FormArray);
   }
 
   addOption(fieldIndex: number, value: string = '') {
-    const options = this.getOptions(fieldIndex);
-    options.push(this.fb.control(value));
+    this.getOptions(fieldIndex).push(this.fb.control(value));
   }
 
   removeOption(fieldIndex: number, optionIndex: number) {
-    const options = this.getOptions(fieldIndex);
-    options.removeAt(optionIndex);
+    this.getOptions(fieldIndex).removeAt(optionIndex);
   }
 
-  toggleFileType(event: any, type: string) {
+  toggleFileType(event: any, typeValue: string) { 
     const isChecked = event.detail.checked;
-    const fileTypesArray = this.allowedFileTypes;
+    const fileTypesFormArray = this.formAllowedFileTypes; 
     
     if (isChecked) {
-      fileTypesArray.push(this.fb.control(type));
+      fileTypesFormArray.push(this.fb.control(typeValue));
     } else {
-      const index = fileTypesArray.controls.findIndex(control => control.value === type);
-      if (index >= 0) {
-        fileTypesArray.removeAt(index);
+      let indexToRemove = -1;
+      fileTypesFormArray.controls.forEach((control: FormControl, index: number) => {
+        if (control.value === typeValue) {
+          indexToRemove = index;
+        }
+      });
+      if (indexToRemove >= 0) {
+        fileTypesFormArray.removeAt(indexToRemove);
       }
     }
   }
 
-  isFileTypeSelected(type: string): boolean {
-    return this.allowedFileTypes.controls.some(control => control.value === type);
+  isFileTypeSelected(typeValue: string): boolean {
+    return this.formAllowedFileTypes.controls.some((control: FormControl) => control.value === typeValue);
   }
 
   generateId() {
+    // Using AngularFirestore's ID generation for consistency if you prefer,
+    // but this requires injecting AngularFirestore into this component or calling a service method.
+    // For simplicity, keeping a client-side unique enough ID for fields within the form.
     return Math.random().toString(36).substring(2, 15);
   }
 
   async saveForm() {
-    if (this.formBuilderForm.valid) {
-      this.isSubmitting = true;
-      const loading = await this.loadingController.create({
-        message: this.isEditing ? 'Updating form...' : 'Creating form...',
-        spinner: 'crescent'
-      });
-      await loading.present();
-
-      try {
-        const formValue = this.formBuilderForm.value;
-        
-        // Only include fields that have at least a label
-        const fields = formValue.fields.filter((field: any) => field.label.trim() !== '');
-        
-        // For radio fields, ensure they have at least one option
-        fields.forEach((field: any) => {
-          if (field.type === 'radio' && (!field.options || field.options.length === 0)) {
-            field.options = ['Option 1'];
-          }
-        });
-
-        const user = await this.authService.currentUser$.pipe(first()).toPromise();
-        
-        const orderForm: Partial<OrderForm> = {
-          retailerId: user.uid,
-          title: formValue.title,
-          description: formValue.description,
-          fields,
-          allowFileUpload: formValue.allowFileUpload,
-          allowedFileTypes: formValue.allowedFileTypes,
-          cancellationPolicy: formValue.cancellationPolicy
-        };
-
-        if (this.isEditing && this.formId) {
-          await this.formBuilderService.updateOrderForm(this.formId, orderForm);
-        } else {
-          await this.formBuilderService.createOrderForm(orderForm);
-        }
-        
-        await loading.dismiss();
-        this.isSubmitting = false;
-
+    if (this.formBuilderForm.invalid) { 
+        this.formBuilderForm.markAllAsTouched(); // Mark all fields as touched to show validation errors
         const toast = await this.toastController.create({
-          message: this.isEditing ? 'Form updated successfully' : 'Form created successfully',
-          duration: 2000,
-          color: 'success'
+            message: 'Please ensure all required fields are filled correctly.',
+            duration: 3000,
+            color: 'warning'
         });
         toast.present();
-        
-        this.router.navigate(['/retailer/forms']);
-      } catch (error) {
-        await loading.dismiss();
-        this.isSubmitting = false;
-        
-        const alert = await this.alertController.create({
-          header: 'Error',
-          message: error.message || 'There was an error saving the form.',
-          buttons: ['OK']
+        return; 
+    }
+
+    this.isSubmitting = true;
+    const loading = await this.loadingController.create({
+      message: this.isEditing ? 'Updating form...' : 'Creating form...',
+      spinner: 'crescent'
+    });
+    await loading.present();
+
+    try {
+      const formValue = this.formBuilderForm.value;
+      
+      const fieldsToSave: FormField[] = formValue.fields
+        .filter((field: any) => field.label && field.label.trim() !== '')
+        .map((field: any) => {
+          const newField: FormField = {
+            id: field.id || this.generateId(),
+            type: field.type,
+            label: field.label,
+            required: field.required || false,
+            description: field.description || '',
+            placeholder: field.placeholder || '',
+            defaultValue: field.defaultValue || '',
+            options: field.options || [],
+            validationPatterns: field.validationPatterns || [],
+            maxFileSizeMB: field.maxFileSizeMB || 5
+          };
+          if (field.type === 'radio' && (!newField.options || newField.options.length === 0)) {
+            newField.options = ['Option 1']; 
+          }
+          return newField;
         });
-        await alert.present();
+
+      const user = await this.authService.currentUser$.pipe(
+        filter((u): u is User => u !== null), 
+        first()
+      ).toPromise();
+      
+      if (!user) {
+        throw new Error("User not authenticated.");
       }
+
+      const formDataForService: Omit<OrderForm, 'id' | 'createdAt' | 'updatedAt'> = {
+        retailerId: user.uid, 
+        title: formValue.title,
+        description: formValue.description,
+        fields: fieldsToSave,
+        allowFileUpload: formValue.allowFileUpload,
+        allowedFileTypes: formValue.allowedFileTypes, 
+        maxFilesAllowed: formValue.maxFilesAllowed,
+        cancellationPolicy: formValue.cancellationPolicy,
+        submissionInstructions: formValue.submissionInstructions,
+        active: true, // Default for new/updated forms, adjust as needed
+      };
+
+      if (this.isEditing && this.formId) {
+        await this.formBuilderService.updateOrderForm(this.formId, formDataForService);
+      } else {
+        const newForm: OrderForm = await this.formBuilderService.createOrderForm(formDataForService);
+        console.log('New form created with ID:', newForm.id); // Access newForm.id
+      }
+      
+      await loading.dismiss();
+      this.isSubmitting = false;
+
+      const toast = await this.toastController.create({
+        message: this.isEditing ? 'Form updated successfully' : 'Form created successfully',
+        duration: 2000,
+        color: 'success'
+      });
+      toast.present();
+      
+      this.router.navigate(['/retailer/forms']);
+    } catch (error: any) {
+      await loading.dismiss();
+      this.isSubmitting = false;
+      
+      const alert = await this.alertController.create({
+        header: 'Error',
+        message: error.message || 'There was an error saving the form.',
+        buttons: ['OK']
+      });
+      await alert.present();
     }
   }
 
@@ -246,35 +291,22 @@ export class FormBuilderComponent implements OnInit {
       header: 'Confirm Delete',
       message: 'Are you sure you want to delete this form? This action cannot be undone.',
       buttons: [
-        {
-          text: 'Cancel',
-          role: 'cancel'
-        },
+        { text: 'Cancel', role: 'cancel' },
         {
           text: 'Delete',
           handler: async () => {
-            const loading = await this.loadingController.create({
-              message: 'Deleting form...',
-              spinner: 'crescent'
-            });
+            const loading = await this.loadingController.create({ message: 'Deleting form...', spinner: 'crescent' });
             await loading.present();
-
             try {
-              await this.formBuilderService.deleteOrderForm(this.formId);
-              
+              if (this.formId) { 
+                await this.formBuilderService.deleteOrderForm(this.formId);
+                await loading.dismiss();
+                const toast = await this.toastController.create({ message: 'Form deleted successfully', duration: 2000, color: 'success' });
+                toast.present();
+                this.router.navigate(['/retailer/forms']);
+              } else { throw new Error("Form ID is missing for deletion."); }
+            } catch (error: any) {
               await loading.dismiss();
-              
-              const toast = await this.toastController.create({
-                message: 'Form deleted successfully',
-                duration: 2000,
-                color: 'success'
-              });
-              toast.present();
-              
-              this.router.navigate(['/retailer/forms']);
-            } catch (error) {
-              await loading.dismiss();
-              
               const errorAlert = await this.alertController.create({
                 header: 'Error',
                 message: error.message || 'There was an error deleting the form.',

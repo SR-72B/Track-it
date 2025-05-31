@@ -8,7 +8,8 @@ import { RouterModule, Routes } from '@angular/router';
 import { ChatListComponent } from './chat/chat-list.component';
 import { ChatDetailComponent } from './chat/chat-detail.component';
 import { VideoCallComponent } from './video-call/video-call.component';
-import { NotificationsComponent } from './notifications/notifications.component.ts';
+// Corrected import path assuming 'notifications' folder is at the same level as 'chat' and 'video-call'
+import { NotificationsComponent } from './notification/notification.component'; 
 
 const routes: Routes = [
   { path: 'chats', component: ChatListComponent },
@@ -35,21 +36,6 @@ const routes: Routes = [
   exports: [RouterModule]
 })
 export class CommunicationModule { }
-    
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    
-    if (date >= today) {
-      // Today - show time only
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } else if (date >= yesterday) {
-      // Yesterday
-      return 'Yesterday';
-    } else {
-      // Older - show date
-      return date.toLocaleDateString();
-    }
-  }
-}
+
+// Removed the misplaced date formatting logic from here.
+// That logic should reside within a component or service where it's used.
