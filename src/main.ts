@@ -1,4 +1,7 @@
 // src/main.ts
+// TEST COMMENT TO VERIFY PUSH - June 1, 2025, 12:08 PM EDT
+//import { enableProdMode, importProvidersFrom, isDevMode } from '@angular/core';
+// ... rest of your main.ts file
 import { enableProdMode, importProvidersFrom, isDevMode } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { RouteReuseStrategy, provideRouter } from '@angular/router';
