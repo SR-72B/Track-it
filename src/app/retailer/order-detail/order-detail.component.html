@@ -119,25 +119,26 @@
         expand="block"
         color="danger"
         fill="outline"
-        (click)="cancelOrder(orderDataResult.order)" 
-        [disabled]="!canCancel(orderDataResult.order) || isCancelling">
-        <ion-spinner *ngIf="isCancelling" name="dots"></ion-spinner>
-        <span *ngIf="!isCancelling">Cancel Order</span>
+        (click)="confirmCancelOrder()" 
+        [disabled]="!canCancel(orderDataResult.order) || isCancellingOrder">
+        <ion-spinner *ngIf="isCancellingOrder" name="dots"></ion-spinner>
+        <span *ngIf="!isCancellingOrder">Cancel Order</span>
       </ion-button>
       <div *ngIf="!canCancel(orderDataResult.order)" class="ion-text-center ion-padding-top cancellation-info">
         <p><small>The cancellation period for this order has passed or it cannot be cancelled in its current state.</small></p>
       </div>
     </div>
 
-  </ng-container> <ng-template #noSpecificOrderDataContent>
-    <div *ngIf="orderDataResult && !orderDataResult.order && !isLoading && !errorMessage" class="ion-text-center ion-padding">
+  </ng-container> 
+  <ng-template #noSpecificOrderDataContent>
+    <div *ngIf="(orderData$ | async) && !(orderData$ | async)?.order && !isLoading && !errorMessage" class="ion-text-center ion-padding">
         <ion-icon name="document-outline" class="empty-state-icon" color="medium"></ion-icon>
         <h4>Order Data Incomplete</h4>
         <p>Some order details could not be loaded.</p>
     </div>
   </ng-template>
 
-  <ng-template #loadingOrErrorTemplate>
+  <ng-template #loadingOrErrorTemplate> <!-- This is the 'else' for the main async pipe -->
     <div *ngIf="!isLoading && !errorMessage" class="ion-text-center ion-padding">
       <ion-icon name="information-circle-outline" class="empty-state-icon" color="medium"></ion-icon>
       <h4>No Data</h4>

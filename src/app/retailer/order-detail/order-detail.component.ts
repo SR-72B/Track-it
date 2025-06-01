@@ -25,7 +25,7 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
   orderData$: Observable<{order: Order, updates: OrderUpdate[]} | null> = of(null);
   updateForm: FormGroup;
   isSubmittingUpdate = false; // Correct property name
-  isCancellingOrder = false;
+  isCancellingOrder = false; // This is the correct property name used in the component
   isLoading = true;
   errorMessage: string | null = null;
 
@@ -137,6 +137,29 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
       case 'cancelled': return 'danger';
       default: return 'medium';
     }
+  }
+
+  // Add the missing canCancel method
+  public canCancel(order: Order | undefined | null): boolean {
+    if (!order) return false;
+    if (['cancelled', 'delivered', 'completed'].includes(order.status)) {
+      return false;
+    }
+    // Assuming a similar logic to CustomerOrderDetailComponent or your business rules
+    // For example, if there's a cancellationPolicy.cancellationWindowHours on the form used for the order
+    // This is a placeholder, adapt it to your actual cancellation logic for retailers
+    // For now, let's assume retailers can cancel 'pending' or 'processing' orders.
+    if (order.status === 'pending' || order.status === 'processing') {
+        // Add more specific logic if available, e.g., based on time elapsed or form's policy
+        return true;
+    }
+    // If no specific retailer cancellation logic is defined yet,
+    // you might want to return false or a more lenient true based on requirements.
+    // For demonstration, allowing cancellation if not shipped, delivered, or cancelled.
+    // return !['shipped', 'delivered', 'cancelled', 'completed'].includes(order.status);
+
+    // Defaulting to a simple check for now, adjust as per your business logic
+    return order.status === 'pending';
   }
 
   async updateOrder() {
