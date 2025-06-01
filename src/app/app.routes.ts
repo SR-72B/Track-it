@@ -39,7 +39,7 @@ export const routes: Routes = [
   // Assumes you will create a 'communication.routes.ts' file exporting COMMUNICATION_ROUTES
   {
     path: 'communication',
-    loadChildren: () => import('./communication/communciation.routes').then(r => r.COMMUNICATION_ROUTES),
+    loadChildren: () => import('./communication/communication.routes').then(r => r.COMMUNICATION_ROUTES),
     canActivate: [AuthGuard] // Protected section
   },
 
