@@ -1,10 +1,10 @@
 // src/app/retailer/analytics/analytics.component.ts
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
-import { Router, RouterModule } from '@angular/router';
+import { RouterModule } from '@angular/router'; // Keep if template uses routerLink
 import { CommonModule, CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
-import { IonicModule, LoadingController, AlertController, ToastController } from '@ionic/angular';
-import { Observable, Subscription, of, forkJoin } from 'rxjs'; // forkJoin is imported but not used in this snippet, remove if not needed elsewhere
-import { map, first, filter, catchError, finalize, switchMap, tap } from 'rxjs/operators'; // Added switchMap and tap
+import { IonicModule, LoadingController } from '@ionic/angular'; // Removed AlertController, ToastController from Ionic imports if not used
+import { Observable, Subscription, of } from 'rxjs'; // Removed unused forkJoin
+import { map, first, filter, catchError, finalize, switchMap, tap } from 'rxjs/operators';
 
 import { AuthService, User } from '../../auth/auth.service';
 import { OrderService, Order } from '../order-management/order.service';
@@ -27,9 +27,9 @@ export interface RetailerAnalyticsData {
     CommonModule,
     IonicModule,
     RouterModule,
-    CurrencyPipe,
-    DatePipe,
-    DecimalPipe
+    CurrencyPipe, // Available for template use
+    DatePipe,     // Available for template use
+    DecimalPipe   // Available for template use
   ]
 })
 export class AnalyticsComponent implements OnInit, OnDestroy {
@@ -43,15 +43,21 @@ export class AnalyticsComponent implements OnInit, OnDestroy {
   private dataSubscription: Subscription | undefined;
 
   // Chart placeholders
-  // ... (chart properties remain the same)
+  // public salesByStatusChartLabels: string[] = [];
+  // public salesByStatusChartData: any[] = [{ data: [], label: 'Orders' }];
+  // public salesOverTimeChartData: any[] = [{ data: [], label: 'Revenue' }];
+  // public salesOverTimeChartLabels: string[] = [];
+  // public chartOptions = { responsive: true, maintainAspectRatio: false };
+  // public chartLegend = true;
+  // public chartPlugins = [];
 
   constructor(
     private authService: AuthService,
     private orderService: OrderService,
-    private router: Router, // Injected but not used in this snippet, remove if not needed
+    // private router: Router, // Removed as not used in this snippet
     private loadingController: LoadingController,
-    private alertController: AlertController, // Injected but not used in this snippet, remove if not needed
-    private toastController: ToastController, // Injected but not used in this snippet, remove if not needed
+    // private alertController: AlertController, // Removed as not used in this snippet
+    // private toastController: ToastController, // Removed as not used in this snippet
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -74,39 +80,38 @@ export class AnalyticsComponent implements OnInit, OnDestroy {
     }
 
     this.dataSubscription = this.authService.currentUser$.pipe(
-      first((user): user is User => !!user && !!user.uid), // Ensure user is User and has uid
-      switchMap(user => { // switchMap is now imported
-        // No need for '!user' check here due to the filter in first()
+      first((user): user is User => !!user && !!user.uid),
+      switchMap(user => {
         this.currentUser = user;
         return this.orderService.getRetailerOrders(user.uid).pipe(
           catchError(err => {
             console.error('Error loading orders for analytics:', err);
             this.errorMessage = 'Could not load order data for analytics.';
-            return of(null); // Return null to indicate failure in this inner stream
+            return of(null);
           })
         );
       }),
-      catchError(authError => { // Catches errors from currentUser$ or its filter
+      catchError(authError => {
         console.error('Error fetching current user for analytics:', authError);
         this.errorMessage = 'Failed to load user data. Please ensure you are logged in.';
-        return of(null); // Return null if user fetching fails
+        return of(null);
       }),
       finalize(async () => {
         this.isLoading = false;
         if (loader) await loader.dismiss().catch(e => console.warn("Loader dismiss error", e));
         if (refresherEvent) refresherEvent.target.complete();
-        this.cdr.detectChanges(); // Ensure UI updates after loading finishes
+        this.cdr.detectChanges();
       })
-    ).subscribe(orders => { // orders here can be Order[] or null
+    ).subscribe(orders => {
       if (orders) {
-        this.allOrders = orders; // Assign directly if orders is Order[]
+        this.allOrders = orders;
         this.processAnalytics();
       } else {
-        this.allOrders = []; // Ensure allOrders is an empty array if orders is null
-        if (!this.errorMessage) { // If no specific error was set during fetching
+        this.allOrders = [];
+        if (!this.errorMessage) {
           this.errorMessage = 'No order data available to generate analytics.';
         }
-        this.processAnalytics(); // Process with empty orders to show 0 stats
+        this.processAnalytics();
       }
     });
   }
@@ -119,18 +124,17 @@ export class AnalyticsComponent implements OnInit, OnDestroy {
         averageOrderValue: 0,
         ordersByStatus: [],
       };
-      this.cdr.detectChanges(); // Update view for empty state
+      this.cdr.detectChanges();
       return;
     }
 
     const totalOrders = this.allOrders.length;
-    // Ensure order.totalAmount exists on your Order interface for this to work without error
     const totalRevenue = this.allOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
     const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
     const statusCounts: { [key: string]: number } = {};
     this.allOrders.forEach(order => {
-      const statusKey = order.status || 'unknown'; // Handle potentially undefined status
+      const statusKey = order.status || 'unknown';
       statusCounts[statusKey] = (statusCounts[statusKey] || 0) + 1;
     });
 
@@ -148,20 +152,18 @@ export class AnalyticsComponent implements OnInit, OnDestroy {
     };
 
     console.log('Analytics Processed:', this.analyticsData);
-    this.cdr.detectChanges(); // Ensure view updates with new analytics data
+    this.cdr.detectChanges();
   }
 
-  formatCurrency(value: number): string {
-    return value.toLocaleString(undefined, { style: 'currency', currency: 'USD' });
-  }
+  // formatCurrency method removed as CurrencyPipe is imported and preferred for template formatting
 
-  getStatusClass(status: string): string {
-    switch (status?.toLowerCase()) { // Added optional chaining for status
+  getStatusClass(status: string | undefined): string {
+    switch (status?.toLowerCase()) {
       case 'pending': return 'status-pending';
       case 'processing': return 'status-processing';
       case 'shipped': return 'status-shipped';
       case 'delivered': return 'status-delivered';
-      case 'completed': return 'status-completed'; // Ensure 'completed' is a valid status in your Order interface
+      case 'completed': return 'status-completed';
       case 'cancelled': return 'status-cancelled';
       default: return 'status-other';
     }
@@ -171,16 +173,11 @@ export class AnalyticsComponent implements OnInit, OnDestroy {
     this.loadInitialData(event);
   }
 
-  // Removed showToast as it wasn't used in this component's logic
-  // async showToast(message: string, color: 'success' | 'warning' | 'danger' | string = 'medium', duration: number = 3000) {
-  //   const toast = await this.toastController.create({ message, duration, color, position: 'top' });
-  //   toast.present();
-  // }
-
   ngOnDestroy() {
     if (this.dataSubscription) {
       this.dataSubscription.unsubscribe();
     }
   }
 }
+
 
