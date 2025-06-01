@@ -92,6 +92,15 @@ export class FormListComponent implements OnInit, OnDestroy {
     // );
   }
 
+  // Method for the "Try Again" button
+  public retryLoadForms() {
+    if (this.currentUser && this.currentUser.uid) {
+      this.loadFormsForUser(this.currentUser.uid);
+    } else {
+      this.showToast('User data not available. Please try logging in again.', 'warning');
+    }
+  }
+
   createForm() {
     this.router.navigate(['/retailer/forms/create']);
   }
@@ -198,6 +207,3 @@ export class FormListComponent implements OnInit, OnDestroy {
     }
   }
 }
-
-
-

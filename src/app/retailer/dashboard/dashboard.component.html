@@ -120,10 +120,20 @@
       <ion-card-header>
         <ion-card-title>
           Active Forms
-          <ion-button size="small" fill="clear" (click)="viewAllForms()" *ngIf="activeForms.length > 0 || (formBuilderService.getRetailerForms(currentUser!.uid) | async)?.length" slot="end">
+      <ion-button size="small" fill="clear" (click)="viewAllForms()" *ngIf="user$ | async as user; then showViewAllFormsButton else hideViewAllFormsButton" slot="end"></ion-button>
+        <ng-template #showViewAllFormsButton let-user>
+          <ion-button size="small" fill="clear" (click)="viewAllForms()" *ngIf="activeForms.length > 0 || (user && (formBuilderService.getRetailerForms(user.uid) | async)?.length)">
             View All
             <ion-icon name="arrow-forward-outline" slot="end"></ion-icon>
           </ion-button>
+        </ng-template>
+        <ng-template #hideViewAllFormsButton>
+          <!-- Optionally show button if only activeForms.length > 0 and user is not yet resolved -->
+          <ion-button size="small" fill="clear" (click)="viewAllForms()" *ngIf="activeForms.length > 0">
+            View All
+            <ion-icon name="arrow-forward-outline" slot="end"></ion-icon>
+          </ion-button>
+        </ng-template>
         </ion-card-title>
       </ion-card-header>
       <ion-card-content>

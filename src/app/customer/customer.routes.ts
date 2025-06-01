@@ -21,7 +21,7 @@ export const CUSTOMER_ROUTES: Routes = [
   },
   {
     path: 'orders/:id', // Route to view order details
-    loadComponent: () => import('./order-detail/customer-order-detail.component').then(c => c.OrderDetailComponent)
+    loadComponent: () => import('./order-detail/customer-order-detail.component').then(c => c.CustomerOrderDetailComponent)
   },
   {
     path: 'tracking/:orderId', // Route for order tracking

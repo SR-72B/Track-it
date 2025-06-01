@@ -18,13 +18,13 @@ ion-content {
 // Form header (if you add one above the <form> tag)
 .form-header {
   margin-bottom: $form-spacing-unit * 1.5;
-  padding: 0 $form-spacing-unit / 2; // Add some horizontal padding if content is not padded
+  padding: 0 calc($form-spacing-unit / 2); // Add some horizontal padding if content is not padded
 
   h1 {
     font-size: 1.8em;
     font-weight: 600;
     color: var(--ion-color-primary);
-    margin-bottom: $form-spacing-unit / 2;
+    margin-bottom: calc($form-spacing-unit / 2);
   }
   p {
     font-size: 1em;
@@ -116,7 +116,7 @@ form {
 .selected-files-list {
   background: transparent; // List itself should be transparent if section has background
   padding: 0;
-  margin-top: $form-spacing-unit / 2;
+  margin-top: calc($form-spacing-unit / 2);
 
   ion-item-divider.ion-no-padding { // For "Selected Files" header
     --padding-start: 0;
@@ -130,7 +130,7 @@ form {
 
   .selected-file-item {
     --background: var(--ion-color-light-tint, #f9f9f9);
-    margin-bottom: $form-spacing-unit / 2;
+    margin-bottom: calc($form-spacing-unit / 2);
     border-radius: $form-border-radius;
     --border-color: var(--ion-color-step-100, #eee);
     border-bottom: 1px solid var(--border-color); // Add border if lines="none"
@@ -208,6 +208,6 @@ form {
     text-align: center;
     color: $form-label-color;
     ion-spinner {
-        margin-bottom: $form-spacing-unit / 2;
+        margin-bottom: calc($form-spacing-unit / 2);
     }
 }

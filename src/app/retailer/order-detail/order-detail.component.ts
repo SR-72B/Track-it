@@ -127,6 +127,18 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
     return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
 
+  public getStatusColor(status: string | undefined): string {
+    if (!status) return 'medium';
+    switch (status.toLowerCase()) {
+      case 'pending': return 'warning';
+      case 'processing': return 'primary';
+      case 'shipped': return 'tertiary';
+      case 'delivered': return 'success';
+      case 'cancelled': return 'danger';
+      default: return 'medium';
+    }
+  }
+
   async updateOrder() {
     if (this.updateForm.invalid) {
       this.markFormGroupTouched(this.updateForm);
@@ -264,4 +276,3 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
     // orderDataSubscription was removed as orderData$ is handled by async pipe or firstValueFrom
   }
 }
-

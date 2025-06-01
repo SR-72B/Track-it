@@ -391,7 +391,7 @@ export class VideoCallComponent implements OnInit, OnDestroy {
     });
   }
 
-  private async handleCallEnded(reason: string) {
+  public async handleCallEnded(reason: string) {
     // Prevent multiple alerts or navigations if already handled or component is being destroyed
     if (this.callStatus === 'ended' && this.router.url.includes('/communication/chats')) {
       console.log("handleCallEnded: Already ended and navigated or on chat list.");

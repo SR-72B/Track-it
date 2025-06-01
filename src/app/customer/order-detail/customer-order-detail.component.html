@@ -133,7 +133,7 @@
         </div>
 
       </ng-container> </ng-container> <ng-template #noSpecificOrderData>
-        <div *ngIf="!isLoading && orderDataResult === null && !errorMessage" class="ion-text-center ion-padding">
+    <div *ngIf="!isLoading && !errorMessage" class="ion-text-center ion-padding">
             <ion-icon name="document-outline" class="empty-state-icon" color="medium"></ion-icon>
             <h4>Order Not Found</h4>
             <p>The requested order details could not be found.</p>

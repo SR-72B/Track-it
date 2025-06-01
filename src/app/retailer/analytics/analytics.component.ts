@@ -1,7 +1,7 @@
 // src/app/retailer/analytics/analytics.component.ts
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { RouterModule } from '@angular/router'; // Keep if template uses routerLink
-import { CommonModule, CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
+import { CommonModule, CurrencyPipe, DecimalPipe } from '@angular/common';
 import { IonicModule, LoadingController } from '@ionic/angular'; // Removed AlertController, ToastController from Ionic imports if not used
 import { Observable, Subscription, of } from 'rxjs'; // Removed unused forkJoin
 import { map, first, filter, catchError, finalize, switchMap, tap } from 'rxjs/operators';
@@ -28,7 +28,6 @@ export interface RetailerAnalyticsData {
     IonicModule,
     RouterModule,
     CurrencyPipe, // Available for template use
-    DatePipe,     // Available for template use
     DecimalPipe   // Available for template use
   ]
 })
@@ -179,5 +178,3 @@ export class AnalyticsComponent implements OnInit, OnDestroy {
     }
   }
 }
-
-

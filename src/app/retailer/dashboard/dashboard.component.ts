@@ -149,7 +149,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   // Added allOrders property to component and pass it here
-  private allOrders: Order[] = [];
+  public allOrders: Order[] = [];
 
   calculateOrderStatistics(orders: Order[]) { // Takes orders as parameter
     this.orderCounts.total = orders.length;
@@ -261,5 +261,3 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 }
-
-

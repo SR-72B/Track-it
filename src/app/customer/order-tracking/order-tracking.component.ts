@@ -173,6 +173,19 @@ export class OrderTrackingComponent implements OnInit, OnDestroy {
     return Math.min(progress, 100);
   }
 
+  public getStatusClass(status: string | undefined): string {
+    if (!status) return 'status-other';
+    switch (status.toLowerCase()) {
+      case 'pending': return 'status-pending';
+      case 'processing': return 'status-processing';
+      case 'shipped': return 'status-shipped';
+      case 'delivered': return 'status-delivered';
+      case 'completed': return 'status-completed'; // Assuming completed is a valid status
+      case 'cancelled': return 'status-cancelled';
+      case 'failed': return 'status-failed';
+      default: return 'status-other';
+    }
+  }
   doRefresh(event: any) {
     this.loadOrderDetails(event);
   }
@@ -184,4 +197,3 @@ export class OrderTrackingComponent implements OnInit, OnDestroy {
     // No need to unsubscribe from order$ or updates$ if only used with async pipe in template
   }
 }
-

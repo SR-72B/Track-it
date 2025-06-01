@@ -30,17 +30,17 @@ $border-radius-button: 20px; // For pill-shaped buttons
   p {
     color: var(--ion-color-medium-shade);
     font-size: 1.1em;
-    margin-top: $spacing-unit / 2;
+    margin-top: calc($spacing-unit / 2);
   }
 
   .error-icon {
     font-size: 3.5em;
-    margin-bottom: $spacing-unit / 2;
+    margin-bottom: calc($spacing-unit / 2);
   }
 
   ion-button { // For retry button
     margin-top: $spacing-unit * 1.5;
-    --border-radius: $border-radius-button;
+    --border-radius: #{$border-radius-button}; // Use interpolation
   }
 }
 
@@ -58,7 +58,7 @@ $border-radius-button: 20px; // For pill-shaped buttons
 
 ion-card-header {
   // General card header styling, can be overridden by more specific ones
-  padding-bottom: $spacing-unit / 2;
+  padding-bottom: calc($spacing-unit / 2);
   border-bottom: 1px solid var(--ion-color-step-150, #e0e0e0);
 
   ion-card-title {
@@ -74,7 +74,7 @@ ion-card-header {
   align-items: center;
   background-color: var(--ion-color-light-tint); // Subtle background for field headers
   border-bottom: 1px solid var(--ion-color-step-200, #e0e0e0);
-  padding: $spacing-unit / 1.5 $spacing-unit;
+  padding: calc($spacing-unit / 1.5) $spacing-unit;
 
 
   ion-card-subtitle {
@@ -103,7 +103,7 @@ ion-card-content {
   justify-content: space-between;
   align-items: center;
   margin: $spacing-unit * 1.5 0 $spacing-unit;
-  padding: 0 ($spacing-unit / 4); // Minimal horizontal padding if needed
+  padding: 0 calc($spacing-unit / 4); // Minimal horizontal padding if needed
 
   h3 {
     margin: 0;
@@ -113,7 +113,7 @@ ion-card-content {
   }
 
   ion-button { // "Add Field" button
-    --border-radius: $border-radius-button;
+    --border-radius: #{$border-radius-button}; // Use interpolation
     font-weight: 500;
   }
 }
@@ -137,8 +137,8 @@ ion-item-divider {
   font-weight: 600;
   font-size: 1.1em;
   padding-top: $spacing-unit * 1.5;
-  padding-bottom: $spacing-unit / 2;
-  margin-bottom: $spacing-unit / 2;
+  padding-bottom: calc($spacing-unit / 2);
+  margin-bottom: calc($spacing-unit / 2);
   border-bottom: none; // Usually dividers don't need another bottom border
   letter-spacing: 0.3px;
 }
@@ -154,9 +154,9 @@ ion-item-divider {
 
 // Options for radio/checkbox fields
 .options-container {
-  border: 1px solid var(--ion-color-step-200, #e0e0e0);
-  border-radius: $border-radius-card / 2;
-  padding: $spacing-unit / 2 $spacing-unit;
+  border: 1px solid var(--ion-color-step-200, #e0e0e0); 
+  border-radius: calc($border-radius-card / 2);
+  padding: calc($spacing-unit / 2) $spacing-unit;
   margin-top: $spacing-unit;
   background-color: var(--ion-color-light-tint);
 }
@@ -165,14 +165,14 @@ ion-item-divider {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: $spacing-unit / 2;
+  margin-bottom: calc($spacing-unit / 2);
 
   ion-label {
     font-size: 0.9em;
     font-weight: 500;
   }
   ion-button {
-    --border-radius: $border-radius-button;
+    --border-radius: #{$border-radius-button}; // Use interpolation
   }
 }
 
@@ -188,13 +188,13 @@ ion-item-divider {
   .empty-state-icon { // Class used in HTML
     font-size: 3em;
     color: var(--ion-color-medium);
-    margin-bottom: $spacing-unit / 2;
+    margin-bottom: calc($spacing-unit / 2);
   }
 
   h4 {
     font-size: 1.1em;
     font-weight: 500;
-    margin-bottom: $spacing-unit / 2;
+    margin-bottom: calc($spacing-unit / 2);
     color: var(--ion-color-dark);
   }
 
@@ -213,13 +213,13 @@ ion-textarea {
   --padding-start: 12px;
   --padding-end: 12px;
   border: 1px solid var(--ion-color-step-200, #e0e0e0);
-  border-radius: $border-radius-card / 2;
-  margin-top: $spacing-unit / 2; // Add some top margin if it follows a label directly
+  border-radius: calc($border-radius-card / 2);
+  margin-top: calc($spacing-unit / 2); // Add some top margin if it follows a label directly
 }
 
 // Submit button
 form ion-button[type="submit"] {
-  --border-radius: $border-radius-button;
+  --border-radius: #{$border-radius-button}; // Use interpolation
   height: 48px; // Taller submit button
   font-size: 1.1em;
   font-weight: 500;
@@ -243,4 +243,3 @@ form ion-button[type="submit"] {
   }
   // The .fields-array-container ruleset was removed as it was empty
 }
-

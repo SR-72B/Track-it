@@ -25,7 +25,7 @@
   <div *ngIf="errorMessage && !isLoading" class="error-container ion-text-center ion-padding">
     <ion-icon name="alert-circle-outline" color="danger" class="error-icon"></ion-icon>
     <p>{{ errorMessage }}</p>
-    <ion-button (click)="loadInitialUserAndForms()" fill="outline" color="primary"> <ion-icon name="refresh-outline" slot="start"></ion-icon>
+<ion-button (click)="retryLoadForms()" fill="outline" color="primary"> <ion-icon name="refresh-outline" slot="start"></ion-icon>
       Try Again
     </ion-button>
   </div>
