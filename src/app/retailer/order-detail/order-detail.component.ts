@@ -1,11 +1,11 @@
 // src/app/retailer/order-detail/order-detail.component.ts
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core'; // Added ChangeDetectorRef
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AlertController, LoadingController, ToastController, IonicModule } from '@ionic/angular';
 import { Observable, Subscription, of, firstValueFrom } from 'rxjs';
-import { catchError, finalize, tap, filter } from 'rxjs/operators'; // Added filter
+import { catchError, finalize, tap, filter } from 'rxjs/operators'; // Ensure filter is imported
 import { OrderService, Order, OrderUpdate } from '../order-management/order.service';
 
 @Component({
@@ -24,7 +24,7 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
   orderId: string | null = null;
   orderData$: Observable<{order: Order, updates: OrderUpdate[]} | null> = of(null);
   updateForm: FormGroup;
-  isSubmittingUpdate = false;
+  isSubmittingUpdate = false; // Correct property name
   isCancellingOrder = false;
   isLoading = true;
   errorMessage: string | null = null;
@@ -38,7 +38,7 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
   ];
 
   private routeSubscription: Subscription | undefined;
-  private orderDataSubscription: Subscription | undefined; // To manage explicit subscriptions if any
+  // orderDataSubscription is not strictly needed if primarily using async pipe and firstValueFrom for actions
 
   constructor(
     private route: ActivatedRoute,
@@ -48,7 +48,7 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
     private alertController: AlertController,
     private loadingController: LoadingController,
     private toastController: ToastController,
-    private cdr: ChangeDetectorRef // Injected ChangeDetectorRef
+    private cdr: ChangeDetectorRef
   ) {
     this.updateForm = this.fb.group({
       status: ['', Validators.required],
@@ -88,21 +88,14 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
         await loader.present();
     }
 
-    if (this.orderDataSubscription) {
-        this.orderDataSubscription.unsubscribe();
-    }
-
     this.orderData$ = this.orderService.getOrderWithUpdates(this.orderId).pipe(
       tap(data => {
         if (data && data.order) {
-           // Example: Pre-fill form if needed, but ensure this doesn't cause issues if form is already dirty
-           // if (!this.updateForm.dirty) {
-           //   this.updateForm.patchValue({ status: data.order.status }, { emitEvent: false });
-           // }
+          // Pre-fill logic if needed
         } else if (!data && !this.errorMessage) {
             this.errorMessage = 'Order not found.';
         }
-        this.cdr.detectChanges(); // Ensure view updates with new data or error
+        this.cdr.detectChanges();
       }),
       catchError(err => {
         console.error('Error loading order details:', err);
@@ -113,7 +106,7 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
         this.isLoading = false;
         if (loader) await loader.dismiss().catch(e => console.warn("Loader dismiss error", e));
         if (refresherEvent) refresherEvent.target.complete();
-        this.cdr.detectChanges(); // Ensure loading state updates view
+        this.cdr.detectChanges();
       })
     );
   }
@@ -155,21 +148,19 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
     try {
       const { status, message } = this.updateForm.value;
       
-      // Use firstValueFrom with a type guard in filter to ensure orderData and orderData.order are not null
       const orderData = await firstValueFrom(
         this.orderData$.pipe(
           filter((data): data is { order: Order; updates: OrderUpdate[] } => !!data && !!data.order)
         )
       );
-      // If firstValueFrom resolves, orderData and orderData.order are guaranteed to be non-null here
 
       await this.orderService.updateOrderStatus(orderData.order, status, message);
       
       this.updateForm.reset();
       this.showToast('Order updated successfully!', 'success');
-      this.loadOrderDetails(); // Refresh data
+      this.loadOrderDetails();
 
-    } catch (error: any) { // This catch will also handle if firstValueFrom rejects (e.g., orderData$ emits only null then completes)
+    } catch (error: any) {
       console.error('Error updating order:', error);
       this.showErrorAlert('Update Failed', error.message || 'Current order details not available or an error occurred.');
     } finally {
@@ -178,7 +169,7 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
     }
   }
 
-  async confirmCancelOrder() {
+  async confirmCancelOrder() { // Correct method name
     let currentOrder: Order | undefined;
     try {
         const orderData = await firstValueFrom(
@@ -193,7 +184,7 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
         return;
     }
 
-    if (!currentOrder) { // Should be caught by the try/catch if firstValueFrom rejects
+    if (!currentOrder) {
       this.showToast('Order details not loaded. Cannot cancel.', 'warning');
       return;
     }
@@ -225,9 +216,9 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
             await loading.present();
 
             try {
-              await this.orderService.cancelOrder(currentOrder!, data.reason.trim()); // currentOrder is defined here
+              await this.orderService.cancelOrder(currentOrder!, data.reason.trim());
               this.showToast('Order cancelled successfully.', 'success');
-              this.loadOrderDetails(); // Refresh data
+              this.loadOrderDetails();
             } catch (error: any) {
               console.error('Error cancelling order:', error);
               this.showErrorAlert('Cancellation Failed', error.message || 'There was an error cancelling the order.');
@@ -270,8 +261,6 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
     if (this.routeSubscription) {
       this.routeSubscription.unsubscribe();
     }
-    if (this.orderDataSubscription) { // If you end up using a manual subscription for orderData$
-        this.orderDataSubscription.unsubscribe();
-    }
+    // orderDataSubscription was removed as orderData$ is handled by async pipe or firstValueFrom
   }
 }

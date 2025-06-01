@@ -34,6 +34,7 @@ export interface SubscriptionDetails {
   status: 'active' | 'trialing' | 'past_due' | 'cancelled' | 'unpaid' | 'incomplete' | 'incomplete_expired' | 'ended' | string;
   startDate: any; // Firestore Timestamp or Date
   endDate?: any; // End of current billing cycle or trial
+  amount?: number; // Add this if the template uses 'amount'
   nextBillingDate?: any; // For recurring subscriptions
   trialEndDate?: any;
   price?: number; // Price at the time of subscription/renewal

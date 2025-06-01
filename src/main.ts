@@ -2,23 +2,22 @@
 import { enableProdMode, importProvidersFrom, isDevMode } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { RouteReuseStrategy, provideRouter } from '@angular/router';
-import { IonicModule, IonicRouteStrategy } from '@ionic/angular'; // Ensure IonicModule is imported
+import { IonicModule, IonicRouteStrategy } from '@ionic/angular';
 import { provideServiceWorker } from '@angular/service-worker';
 
 import { AppComponent } from './app/app.component';
-import { routes } from './app/app.routes'; // Corrected: app.routes (plural)
+import { routes } from './app/app.routes'; // Ensure this path is correct and file exports 'routes'
 import { environment } from './environments/environment';
 
 // Import HttpClient provider function if you use HttpClient
 // import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 
-// If you use AngularFire, import necessary providers
-// import { provideFirebaseApp, initializeApp } from '@angular/fire/app';
-// import { provideAuth, getAuth } from '@angular/fire/auth';
-// import { provideFirestore, getFirestore } from '@angular/fire/firestore';
-// import { provideStorage, getStorage } from '@angular/fire/storage';
-// import { FIREBASE_OPTIONS } from '@angular/fire/compat';
-
+// For AngularFire compat
+import { FIREBASE_OPTIONS } from '@angular/fire/compat';
+import { AngularFireModule } from '@angular/fire/compat';
+import { AngularFireAuthModule } from '@angular/fire/compat/auth';
+import { AngularFirestoreModule } from '@angular/fire/compat/firestore';
+import { AngularFireStorageModule } from '@angular/fire/compat/storage'; // If you use storage
 
 if (environment.production) {
   enableProdMode();
@@ -26,9 +25,6 @@ if (environment.production) {
 
 bootstrapApplication(AppComponent, {
   providers: [
-    // If you still have an AppModule and want to import its providers (less common with full standalone)
-    // importProvidersFrom(AppModule),
-
     // Ionic Global Providers
     importProvidersFrom(IonicModule.forRoot({})), // Configure Ionic globally
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
@@ -42,21 +38,25 @@ bootstrapApplication(AppComponent, {
         registrationStrategy: 'registerWhenStable:30000'
     }),
 
-    // Example: HttpClient providers (if you use HttpClient)
+    // Firebase providers (using @angular/fire/compat)
+    // This is necessary for AngularFireAuth, AngularFirestore from the 'compat' path to work.
+    { provide: FIREBASE_OPTIONS, useValue: environment.firebase },
+    importProvidersFrom(
+      AngularFireModule.initializeApp(environment.firebase), // Not strictly needed if FIREBASE_OPTIONS is provided, but often included
+      AngularFireAuthModule,
+      AngularFirestoreModule,
+      // AngularFireStorageModule // Uncomment if you use Firebase Storage
+    ),
+
+
+    // Example: HttpClient providers (if you use HttpClient for non-Firebase requests)
     // provideHttpClient(withInterceptorsFromDi()),
 
-    // Example: Firebase providers (using @angular/fire modern providers)
-    // importProvidersFrom(provideFirebaseApp(() => initializeApp(environment.firebase))),
-    // importProvidersFrom(provideAuth(() => getAuth())),
-    // importProvidersFrom(provideFirestore(() => getFirestore())),
-    // importProvidersFrom(provideStorage(() => getStorage())),
 
-    // Example: Firebase providers (using @angular/fire/compat)
-    // { provide: FIREBASE_OPTIONS, useValue: environment.firebase },
-
-    // Add other global providers your app needs here
-    // e.g., your AuthService, OrderService, etc., if they are not providedIn: 'root'
-    // or if you need to configure them globally.
+    // Add other global providers your app needs here.
+    // Services already marked with `providedIn: 'root'` generally don't need to be added here
+    // unless they require specific `forRoot` configuration that isn't handled by `importProvidersFrom`.
   ]
 }).catch(err => console.error(err));
+
 

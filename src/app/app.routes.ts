@@ -39,7 +39,7 @@ export const routes: Routes = [
   // Assumes you will create a 'communication.routes.ts' file exporting COMMUNICATION_ROUTES
   {
     path: 'communication',
-    loadChildren: () => import('./communication/communciation.routes').then(r => r.COMMUNICATION_ROUTES),
+    loadChildren: () => import('./communication/communication.routes').then(r => r.COMMUNICATION_ROUTES),
     canActivate: [AuthGuard] // Protected section
   },
 
@@ -47,7 +47,7 @@ export const routes: Routes = [
   // Assumes you will create a 'payment.routes.ts' file exporting PAYMENT_ROUTES
   {
     path: 'payment',
-    loadChildren: () => import('./payment/payment.route').then(r => r.PAYMENT_ROUTES),
+    loadChildren: () => import('./payment/payment.routes').then(r => r.PAYMENT_ROUTES), // Assuming plural 'routes'
     canActivate: [AuthGuard] // Protected section
   },
 

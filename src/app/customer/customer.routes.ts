@@ -21,7 +21,7 @@ export const CUSTOMER_ROUTES: Routes = [
   },
   {
     path: 'orders/:id', // Route to view order details
-    loadComponent: () => import('./order-detail/customer-order-detail.component').then(c => c.CustomerOrderDetailComponent)
+    loadComponent: () => import('./order-detail/customer-order-detail.component').then(c => c.OrderDetailComponent)
   },
   {
     path: 'tracking/:orderId', // Route for order tracking
@@ -44,4 +44,3 @@ export const CUSTOMER_ROUTES: Routes = [
     pathMatch: 'full'
   }
 ];
-

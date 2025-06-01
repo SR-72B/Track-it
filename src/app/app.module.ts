@@ -26,7 +26,9 @@ import { SubscriptionGuard } from './auth/subscription.guard';
 import { ServiceWorkerModule } from '@angular/service-worker';
 
 @NgModule({
-  declarations: [AppComponent],
+  // AppComponent is standalone and bootstrapped in main.ts (via bootstrapApplication),
+  // so it should not be declared in any NgModule.
+  declarations: [],
   imports: [
     BrowserModule,
     IonicModule.forRoot(),
@@ -51,6 +53,6 @@ import { ServiceWorkerModule } from '@angular/service-worker';
     CustomerGuard,
     SubscriptionGuard
   ],
-  bootstrap: [AppComponent]
+  // AppComponent is standalone and bootstrapped in main.ts via bootstrapApplication.
 })
 export class AppModule {}

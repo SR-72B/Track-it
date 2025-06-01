@@ -4,9 +4,9 @@ import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { AngularFireStorage } from '@angular/fire/compat/storage';
 import { Observable, combineLatest, from, of } from 'rxjs';
 import { map, switchMap, first, last } from 'rxjs/operators';
-import { AuthService, User } from '../../auth/auth.service';
-import { OrderForm } from '../../retailer/form-builder/form-builder.service';
-import { Order, OrderUpdate } from '../../retailer/order-management/order.service';
+import { AuthService, User } from '../auth/auth.service'; // Adjust the import path as necessary';
+import { OrderForm } from '../retailer/form-builder/form-builder.service';
+import { Order, OrderUpdate } from '../retailer/order-management/order.service';
 
 @Injectable({
   providedIn: 'root'
