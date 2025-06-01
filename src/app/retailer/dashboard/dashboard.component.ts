@@ -42,7 +42,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   constructor(
     private authService: AuthService,
     private orderService: OrderService,
-    private formBuilderService: FormBuilderService,
+    public formBuilderService: FormBuilderService, // Ensure it's public (or remove 'private')
     private router: Router,
     private loadingController: LoadingController,
     private alertController: AlertController, // Added AlertController

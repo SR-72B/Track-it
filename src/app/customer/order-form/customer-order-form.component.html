@@ -23,7 +23,7 @@
           (change)="onFileSelected($event)" 
           [accept]="orderForm.allowedFileTypes?.join(',')"
           multiple>
-          </div>
+        </div>
 
       <ion-list *ngIf="selectedFiles.length > 0" lines="none" class="selected-files-list">
         <ion-item-divider color="light" class="ion-no-padding">
@@ -63,4 +63,6 @@
       <ion-spinner *ngIf="isSubmitting" name="dots"></ion-spinner>
       <span *ngIf="!isSubmitting">Submit Order</span>
     </ion-button>
-  </form> </ng-container> </ion-content>
+  </form>
+</ng-container>
+</ion-content>

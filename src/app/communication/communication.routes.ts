@@ -4,7 +4,7 @@ import { Routes } from '@angular/router';
 // Assuming these components are or will be standalone:
  import { ChatListComponent } from './chat/chat-list.component';
  import { ChatDetailComponent } from './chat/chat-detail.component'; // Note: your error log had 'chat-detail.component.scss'
- import { NotificationsComponent } from './notification/notification.component'; // You made this standalone
+ import { NotificationsComponent } from './notification/notifications.component'; // You made this standalone
  import { VideoCallComponent } from './video-call/video-call.component';
 
 export const COMMUNICATION_ROUTES: Routes = [
@@ -18,7 +18,7 @@ export const COMMUNICATION_ROUTES: Routes = [
   },
   {
     path: 'notifications',
-    loadComponent: () => import('./notification/notification.component').then(c => c.NotificationsComponent)
+    loadComponent: () => import('./notification/notifications.component').then(c => c.NotificationsComponent)
   },
   {
     path: 'video-call/:callId', // Route for a video call, using :callId as a parameter

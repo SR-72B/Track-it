@@ -9,7 +9,7 @@ import { ChatListComponent } from './chat/chat-list.component';
 import { ChatDetailComponent } from './chat/chat-detail.component';
 import { VideoCallComponent } from './video-call/video-call.component';
 // Corrected import path assuming 'notifications' folder is at the same level as 'chat' and 'video-call'
-import { NotificationsComponent } from './notification/notification.component'; 
+import { NotificationsComponent } from './notification/notifications.component'; 
 
 const routes: Routes = [
   { path: 'chats', component: ChatListComponent },
