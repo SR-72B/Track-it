@@ -1,10 +1,10 @@
 // src/app/retailer/form-list/form-list.component.ts
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core'; // Added ChangeDetectorRef
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AlertController, LoadingController, IonicModule, ToastController } from '@ionic/angular';
-import { Observable, Subscription, of, firstValueFrom } from 'rxjs'; // Added firstValueFrom
-import { map, first, filter, catchError, finalize, switchMap, tap } from 'rxjs/operators';
+import { Observable, Subscription, of } from 'rxjs'; // Removed unused firstValueFrom
+import { map, catchError, finalize } from 'rxjs/operators'; // Refined operator imports
 
 import { AuthService, User } from '../../auth/auth.service';
 import { FormBuilderService, OrderForm } from '../form-builder/form-builder.service';
@@ -24,10 +24,10 @@ export class FormListComponent implements OnInit, OnDestroy {
   forms$: Observable<OrderForm[]> = of([]);
   isLoading = true;
   errorMessage: string | null = null;
-  currentUser: User | null = null; // Store the current user
+  currentUser: User | null = null;
 
   private userSubscription: Subscription | undefined;
-  private formsSubscription: Subscription | undefined;
+  private formsSubscription: Subscription | undefined; // Kept for potential manual subscription needs
 
   constructor(
     private authService: AuthService,
@@ -36,24 +36,22 @@ export class FormListComponent implements OnInit, OnDestroy {
     private alertController: AlertController,
     private loadingController: LoadingController,
     private toastController: ToastController,
-    private cdr: ChangeDetectorRef // Added ChangeDetectorRef
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
     this.userSubscription = this.authService.currentUser$.subscribe(user => {
-      this.currentUser = user; // Keep track of the current user
+      this.currentUser = user;
       if (user && user.uid) {
         this.loadFormsForUser(user.uid);
       } else {
         this.isLoading = false;
         this.forms$ = of([]);
         this.errorMessage = "Please log in to view forms.";
-        this.cdr.detectChanges(); // Ensure UI update
+        this.cdr.detectChanges();
       }
     });
   }
-
-  // loadInitialUserAndForms was combined into ngOnInit for simplicity with currentUser$ subscription
 
   async loadFormsForUser(userId: string, refresherEvent?: any) {
     this.isLoading = true;
@@ -78,16 +76,20 @@ export class FormListComponent implements OnInit, OnDestroy {
         this.isLoading = false;
         // if (loader) await loader.dismiss().catch(e => console.warn("Loader dismiss error", e));
         if (refresherEvent) refresherEvent.target.complete();
-        this.cdr.detectChanges(); // Ensure UI update
+        this.cdr.detectChanges();
       }),
       catchError(error => {
         console.error('Error loading forms:', error);
         this.errorMessage = 'Could not load forms. Please try again.';
+        this.cdr.detectChanges(); // Ensure error message is displayed
         return of([]);
       })
     );
-    // If not using async pipe directly for forms$ and need to subscribe for side effects:
-    // this.formsSubscription = this.forms$.subscribe();
+    // Example of manual subscription if needed for side-effects not handled by async pipe:
+    // this.formsSubscription = this.forms$.subscribe(
+    //   () => { /* Handle data if needed */ },
+    //   () => { /* Handle error if needed, though catchError above handles it for the stream */ }
+    // );
   }
 
   createForm() {
@@ -108,7 +110,7 @@ export class FormListComponent implements OnInit, OnDestroy {
       this.showToast('Form details are missing. Cannot toggle status.', 'danger');
       return;
     }
-    if (!this.currentUser || !this.currentUser.uid) { // Ensure user context for actions
+    if (!this.currentUser || !this.currentUser.uid) {
         this.showToast('User not authenticated. Please log in.', 'danger');
         return;
     }
@@ -119,11 +121,10 @@ export class FormListComponent implements OnInit, OnDestroy {
     await loading.present();
 
     try {
-      // Ensure updateOrderForm in service doesn't require retailerId if it can infer or doesn't need it for this specific update
       await this.formBuilderService.updateOrderForm(form.id, { active: newStatus });
       this.showToast(`Form "${form.title}" ${newStatus ? 'activated' : 'deactivated'}.`, 'success');
-      // Optimistically update local data or rely on observable to refresh
-      // Forcing a reload for simplicity here, but could be more granular
+      // Assuming getRetailerForms is a hot observable, the list will update.
+      // If not, or to ensure immediate UI consistency with local filtering/sorting:
       this.loadFormsForUser(this.currentUser.uid);
     } catch (error: any) {
       this.showErrorAlert('Update Failed', error.message || 'There was an error updating the form status.');
@@ -169,12 +170,12 @@ export class FormListComponent implements OnInit, OnDestroy {
   }
 
   doRefresh(event: any) {
-    // Use the currentUser property which is updated by the ngOnInit subscription
     if (this.currentUser && this.currentUser.uid) {
       this.loadFormsForUser(this.currentUser.uid, event);
     } else {
       this.showToast('Please log in to refresh forms.', 'warning');
       if (event) event.target.complete();
+      this.cdr.detectChanges();
     }
   }
 
@@ -192,10 +193,11 @@ export class FormListComponent implements OnInit, OnDestroy {
     if (this.userSubscription) {
       this.userSubscription.unsubscribe();
     }
-    if (this.formsSubscription) { // If you decide to manually subscribe to forms$
+    if (this.formsSubscription) {
         this.formsSubscription.unsubscribe();
     }
   }
 }
+
 
 

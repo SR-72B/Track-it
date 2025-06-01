@@ -8,7 +8,7 @@ import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-email-verification',
-  templateUrl: './email-verification.component.html', // Ensure this file exists
+  templateUrl: './email-verification.component.html', // Ensure this file exists (as in Canvas: email_verification_html_updated)
   styleUrls: ['./email-verification.component.scss'],   // Ensure this file exists
   standalone: true, // Mark component as standalone
   imports: [
@@ -90,4 +90,5 @@ export class EmailVerificationComponent implements OnInit, OnDestroy {
     }
   }
 }
+
 

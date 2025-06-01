@@ -184,7 +184,7 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
         return;
     }
 
-    if (!currentOrder) {
+    if (!currentOrder) { // This check is somewhat redundant due to the try/catch with firstValueFrom, but safe.
       this.showToast('Order details not loaded. Cannot cancel.', 'warning');
       return;
     }
@@ -216,7 +216,7 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
             await loading.present();
 
             try {
-              await this.orderService.cancelOrder(currentOrder!, data.reason.trim());
+              await this.orderService.cancelOrder(currentOrder!, data.reason.trim()); // currentOrder is defined here
               this.showToast('Order cancelled successfully.', 'success');
               this.loadOrderDetails();
             } catch (error: any) {
@@ -264,3 +264,4 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
     // orderDataSubscription was removed as orderData$ is handled by async pipe or firstValueFrom
   }
 }
+

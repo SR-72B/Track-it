@@ -42,7 +42,7 @@
 
 .metric-card {
   text-align: center;
-  --background: var(--ion-color-light-tint); // Slightly different background for metric cards
+  --background: var(--ion-color-light-tint, #f5f5f5); // Slightly different background for metric cards
   border-radius: 12px;
   box-shadow: var(--card-shadow, 0 2px 8px rgba(0, 0, 0, 0.06));
   height: 100%; // Make cards in a row same height
@@ -84,8 +84,8 @@
 }
 
 .status-item {
-  --padding-start: 0;
-  --inner-padding-end: 0;
+  --padding-start: 16px; // Adjusted for consistency if items are directly in list
+  --inner-padding-end: 16px;
   font-size: 0.95em;
 
   ion-label {
@@ -97,7 +97,7 @@
     color: var(--ion-color-medium-shade);
   }
 
-  // Dynamically apply status colors if needed, or use ion-text color attribute
+  // Dynamically apply status colors based on class from getStatusClass()
   &.status-pending ion-label { color: var(--ion-color-warning-shade); }
   &.status-processing ion-label { color: var(--ion-color-primary-shade); }
   &.status-shipped ion-label { color: var(--ion-color-tertiary-shade); }

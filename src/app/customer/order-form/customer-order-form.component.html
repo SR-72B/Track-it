@@ -1,46 +1,66 @@
-html<!-- Continuing src/app/customer/order-form/customer-order-form.component.html -->
-      <div *ngIf="orderForm.allowFileUpload" class="file-upload-section ion-margin-top">
-        <ion-item-divider>File Upload</ion-item-divider>
-        
-        <ion-item>
-          <ion-label>Allowed file types: {{ orderForm.allowedFileTypes.join(', ') }}</ion-label>
-        </ion-item>
-        
-        <div class="file-input-container ion-padding">
-          <ion-button color="medium" (click)="fileInput.click()">
-            <ion-icon name="cloud-upload" slot="start"></ion-icon>
-            Select Files
+<div *ngIf="orderForm && orderForm.allowFileUpload" class="file-upload-section ion-margin-top">
+      <ion-item-divider color="light">
+        <ion-label>File Upload</ion-label>
+      </ion-item-divider>
+      
+      <ion-item lines="none" *ngIf="orderForm.allowedFileTypes && orderForm.allowedFileTypes.length > 0">
+        <ion-icon name="document-attach-outline" slot="start" color="medium"></ion-icon>
+        <ion-label class="ion-text-wrap">
+          <small>Allowed types: {{ orderForm.allowedFileTypes.join(', ') }}</small>
+          <small *ngIf="orderForm.maxFilesAllowed"> (Max {{ orderForm.maxFilesAllowed }} {{ orderForm.maxFilesAllowed === 1 ? 'file' : 'files' }})</small>
+        </ion-label>
+      </ion-item>
+      
+      <div class="file-input-container ion-padding-horizontal ion-padding-bottom">
+        <ion-button expand="block" color="medium" (click)="fileInput.click()" type="button">
+          <ion-icon name="cloud-upload-outline" slot="start"></ion-icon>
+          Select Files
+        </ion-button>
+        <input 
+          #fileInput 
+          type="file" 
+          style="display: none;" 
+          (change)="onFileSelected($event)" 
+          [accept]="orderForm.allowedFileTypes?.join(',')"
+          multiple>
+          </div>
+
+      <ion-list *ngIf="selectedFiles.length > 0" lines="none" class="selected-files-list">
+        <ion-item-divider color="light" class="ion-no-padding">
+            <ion-label class="ion-padding-start">Selected Files ({{ selectedFiles.length }})</ion-label>
+        </ion-item-divider>
+        <ion-item *ngFor="let file of selectedFiles; let i = index" class="selected-file-item">
+          <ion-icon name="document-text-outline" slot="start" color="primary"></ion-icon>
+          <ion-label class="ion-text-wrap">
+            <h3>{{ file.name }}</h3>
+            <p><small>{{ file.size | number }} bytes ({{ file.type || 'unknown type' }})</small></p>
+          </ion-label>
+          <ion-button slot="end" fill="clear" color="danger" (click)="removeFile(i)" type="button" aria-label="Remove file">
+            <ion-icon slot="icon-only" name="close-circle-outline"></ion-icon>
           </ion-button>
-          <input 
-            #fileInput 
-            type="file" 
-            style="display: none;" 
-            (change)="onFileSelected($event)" 
-            [accept]="orderForm.allowedFileTypes.map(type => '.' + type).join(',')"
-            multiple>
-        </div>
+        </ion-item>
+      </ion-list>
+    </div>
 
-        <ion-list *ngIf="selectedFiles.length > 0">
-          <ion-item *ngFor="let file of selectedFiles; let i = index">
-            <ion-label>
-              <h3>{{ file.name }}</h3>
-              <p>{{ file.size | number }} bytes</p>
-            </ion-label>
-            <ion-button slot="end" fill="clear" color="danger" (click)="removeFile(i)">
-              <ion-icon name="close-circle"></ion-icon>
-            </ion-button>
-          </ion-item>
-        </ion-list>
-      </div>
+    <div *ngIf="orderForm && orderForm.cancellationPolicy" class="cancellation-policy ion-margin-top">
+      <ion-item-divider color="light">
+        <ion-label>Cancellation Policy</ion-label>
+      </ion-item-divider>
+      <ion-text class="ion-padding-horizontal ion-padding-bottom policy-text">
+        <p><small>{{ orderForm.cancellationPolicy }}</small></p>
+      </ion-text>
+    </div>
+     <div *ngIf="orderForm && orderForm.submissionInstructions" class="submission-instructions ion-margin-top">
+      <ion-item-divider color="light">
+        <ion-label>Important Notes</ion-label>
+      </ion-item-divider>
+      <ion-text class="ion-padding-horizontal ion-padding-bottom policy-text">
+        <p><small>{{ orderForm.submissionInstructions }}</small></p>
+      </ion-text>
+    </div>
 
-      <div class="cancellation-policy ion-margin-top">
-        <ion-item-divider>Cancellation Policy</ion-item-divider>
-        <p class="ion-padding">{{ orderForm.cancellationPolicy }}</p>
-      </div>
-
-      <ion-button expand="block" type="submit" [disabled]="dynamicForm.invalid || isSubmitting" class="ion-margin-top">
-        Submit Order
-      </ion-button>
-    </form>
-  </ng-container>
-</ion-content>
+    <ion-button expand="block" type="submit" [disabled]="dynamicForm.invalid || isSubmitting" class="ion-margin-top submit-order-button" size="large">
+      <ion-spinner *ngIf="isSubmitting" name="dots"></ion-spinner>
+      <span *ngIf="!isSubmitting">Submit Order</span>
+    </ion-button>
+  </form> </ng-container> </ion-content>

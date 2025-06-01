@@ -1,12 +1,12 @@
 // src/app/app.component.ts
-import { Component, OnInit, OnDestroy } from '@angular/core'; // Added OnDestroy
-import { Router, RouterModule } from '@angular/router';         // Added RouterModule
-import { CommonModule } from '@angular/common';               // Added CommonModule
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Router, RouterModule } from '@angular/router';         // Import RouterModule
+import { CommonModule } from '@angular/common';               // Import CommonModule
 import { SwUpdate, VersionReadyEvent } from '@angular/service-worker';
-import { AlertController, MenuController, ToastController, IonicModule } from '@ionic/angular'; // Added IonicModule
+import { AlertController, MenuController, ToastController, IonicModule } from '@ionic/angular'; // Import IonicModule
 import { AuthService, User } from './auth/auth.service'; // Ensure User is defined/exported in AuthService
-import { filter, switchMap, tap, catchError } from 'rxjs/operators'; // Added catchError
-import { Subscription, of } from 'rxjs'; // Added of
+import { filter, map } from 'rxjs/operators';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-root',
@@ -20,8 +20,7 @@ import { Subscription, of } from 'rxjs'; // Added of
   ]
 })
 export class AppComponent implements OnInit, OnDestroy {
-  // Define the pages for the menu
-  // Updated icon names for modern Ionicons (usually with -outline)
+  // Ensure your icon names are up-to-date with Ionicons (often adding -outline)
   retailerPages = [
     { title: 'Dashboard', url: '/retailer/dashboard', icon: 'grid-outline' },
     { title: 'Orders', url: '/retailer/orders', icon: 'cart-outline' },
@@ -43,7 +42,7 @@ export class AppComponent implements OnInit, OnDestroy {
   ];
 
   isRetailer: boolean = false;
-  currentUser: User | null = null; // Explicitly declare and type currentUser
+  currentUser: User | null = null;
 
   private authSubscription: Subscription | undefined;
   private swSubscription: Subscription | undefined;
@@ -53,39 +52,30 @@ export class AppComponent implements OnInit, OnDestroy {
     private router: Router,
     private menuCtrl: MenuController,
     private alertController: AlertController,
-    private toastController: ToastController,
-    private swUpdate: SwUpdate // Ensure ServiceWorkerModule is registered in main.ts providers
+    private toastController: ToastController, // Injected, used in logout
+    private swUpdate: SwUpdate
   ) {}
 
   ngOnInit() {
-    this.authSubscription = this.authService.currentUser$.pipe(
-      tap(user => this.currentUser = user), // Keep currentUser property updated
-      switchMap(user => {
-        if (user && user.uid) {
-          // Assuming authService.isRetailer() internally knows about the current user
-          // or uses the latest auth state to determine retailer status.
-          return this.authService.isRetailer().pipe(
-            catchError(err => {
-              console.error('Error determining retailer status:', err);
-              // Default to false if there's an error checking retailer status
-              return of(false);
-            })
-          );
-        }
-        return of(false); // If no user or no uid, default to not being a retailer
-      })
-    ).subscribe(isRetailerValue => {
-      this.isRetailer = isRetailerValue;
+    this.authSubscription = this.authService.currentUser$.subscribe(user => {
+      this.currentUser = user;
+      if (user && user.uid) {
+        this.authService.isRetailer().subscribe(isRetailerValue => {
+          this.isRetailer = isRetailerValue;
+        });
+      } else {
+        this.isRetailer = false;
+      }
     });
 
     if (this.swUpdate.isEnabled) {
       this.swSubscription = this.swUpdate.versionUpdates.pipe(
         filter((evt: any): evt is VersionReadyEvent => evt.type === 'VERSION_READY'),
-        tap((evt: VersionReadyEvent) => { // Use tap for side-effects like logging
+        map((evt: VersionReadyEvent) => {
           console.log(`Current version is ${evt.currentVersion.hash}`);
           console.log(`Latest version is ${evt.latestVersion.hash}`);
         })
-      ).subscribe(async (evt: VersionReadyEvent) => { // evt is now the VersionReadyEvent
+      ).subscribe(async () => {
         const alert = await this.alertController.create({
           header: 'Update Available',
           message: 'A new version of the app is available. Load the new version?',
@@ -108,12 +98,12 @@ export class AppComponent implements OnInit, OnDestroy {
   async logout() {
     try {
       await this.authService.logout();
-      // No need to manually set this.isRetailer = false; authState change should trigger it.
-      // No need to manually navigate; AuthService.logout() or routing guards should handle it.
       this.menuCtrl.close();
+      // Navigation to login page is typically handled by the AuthService or routing guards
+      // If not, uncomment: this.router.navigate(['/auth/login']);
     } catch (error: any) {
       console.error('Error during logout:', error);
-      const toast = await this.toastController.create({ // ToastController is used here
+      const toast = await this.toastController.create({
         message: `Logout failed: ${error.message || 'Please try again.'}`,
         duration: 3000,
         color: 'danger',

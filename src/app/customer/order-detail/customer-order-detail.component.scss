@@ -1,4 +1,4 @@
-// customer-order-detail.scss
+// src/app/customer/order-detail/customer-order-detail.component.scss
 @use "sass:math"; // Add this for math.div()
 @use "sass:color"; // Add this for color.adjust()
 
@@ -470,16 +470,16 @@ $box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
   
   .order-status__timeline::before {
-    background-color: #999;
+    background-color: #999; // Darker for print clarity
   }
   
   .order-items__table th {
-    background-color: #f9f9f9;
+    background-color: #f0f0f0; // Lighter grey for print
   }
   
   .order-summary__card,
   .payment-info__card {
     box-shadow: none;
-    border: 1px solid #ddd;
+    border: 1px solid #ccc; // Clearer border for print
   }
 }

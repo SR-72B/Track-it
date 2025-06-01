@@ -1,5 +1,3 @@
-// src/app/retailer/dashboard/dashboard.component.html
-`
 <ion-header>
   <ion-toolbar color="primary">
     <ion-buttons slot="start">
@@ -9,120 +7,180 @@
   </ion-toolbar>
 </ion-header>
 
-<ion-content>
-  <ion-refresher slot="fixed" (ionRefresh)="loadDashboardData(); $event.target.complete()">
+<ion-content class="dashboard-content">
+  <ion-refresher slot="fixed" (ionRefresh)="doRefresh($event)">
     <ion-refresher-content></ion-refresher-content>
   </ion-refresher>
 
-  <div *ngIf="isLoading" class="ion-text-center ion-padding">
-    <ion-spinner></ion-spinner>
+  <div *ngIf="isLoading && !recentOrders.length && !activeForms.length" class="loading-container ion-text-center ion-padding">
+    <ion-spinner name="crescent" color="primary"></ion-spinner>
     <p>Loading dashboard...</p>
   </div>
 
-  <div *ngIf="!isLoading">
+  <div *ngIf="errorMessage && !isLoading" class="error-container ion-text-center ion-padding">
+    <ion-icon name="alert-circle-outline" color="danger" class="error-icon"></ion-icon>
+    <p>{{ errorMessage }}</p>
+    <ion-button (click)="loadDashboardData()" fill="outline" color="primary">
+      <ion-icon name="refresh-outline" slot="start"></ion-icon>
+      Try Again
+    </ion-button>
+  </div>
+
+  <ng-container *ngIf="!isLoading || recentOrders.length > 0 || activeForms.length > 0">
     <div class="welcome-card ion-padding">
       <h1 *ngIf="user$ | async as user">Welcome, {{ user.displayName || 'Retailer' }}!</h1>
-      <p>Manage your orders and customer forms from this dashboard.</p>
+      <p *ngIf="!(user$ | async)">Welcome, Retailer!</p> <p>Manage your orders and customer forms from this dashboard.</p>
     </div>
 
     <div class="stats-container ion-padding">
-      <h2>Order Statistics</h2>
+      <ion-text color="dark">
+        <h2 class="section-title">Order Statistics</h2>
+      </ion-text>
       <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-value">{{ orderCounts.total }}</div>
-          <div class="stat-label">Total Orders</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">{{ orderCounts.pending }}</div>
-          <div class="stat-label">Pending</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">{{ orderCounts.processing }}</div>
-          <div class="stat-label">Processing</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">{{ orderCounts.shipped }}</div>
-          <div class="stat-label">Shipped</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">{{ orderCounts.delivered }}</div>
-          <div class="stat-label">Delivered</div>
-        </div>
+        <ion-card class="stat-card">
+          <ion-card-content>
+            <div class="stat-value">{{ orderCounts.total }}</div>
+            <div class="stat-label">Total Orders</div>
+          </ion-card-content>
+        </ion-card>
+        <ion-card class="stat-card">
+          <ion-card-content>
+            <div class="stat-value status-pending-text">{{ orderCounts.pending }}</div>
+            <div class="stat-label">Pending</div>
+          </ion-card-content>
+        </ion-card>
+        <ion-card class="stat-card">
+          <ion-card-content>
+            <div class="stat-value status-processing-text">{{ orderCounts.processing }}</div>
+            <div class="stat-label">Processing</div>
+          </ion-card-content>
+        </ion-card>
+        <ion-card class="stat-card">
+          <ion-card-content>
+            <div class="stat-value status-shipped-text">{{ orderCounts.shipped }}</div>
+            <div class="stat-label">Shipped</div>
+          </ion-card-content>
+        </ion-card>
+        <ion-card class="stat-card">
+          <ion-card-content>
+            <div class="stat-value status-delivered-text">{{ orderCounts.delivered }}</div>
+            <div class="stat-label">Delivered</div>
+          </ion-card-content>
+        </ion-card>
+         <ion-card class="stat-card">
+          <ion-card-content>
+            <div class="stat-value status-cancelled-text">{{ orderCounts.cancelled }}</div>
+            <div class="stat-label">Cancelled</div>
+          </ion-card-content>
+        </ion-card>
+      </div>
+       <div class="ion-text-right ion-margin-top">
+        <ion-button fill="clear" size="small" (click)="presentStatisticsAlert()">
+          View Summary
+          <ion-icon name="chevron-forward-outline" slot="end"></ion-icon>
+        </ion-button>
       </div>
     </div>
 
-    <ion-card>
+    <ion-card class="data-section-card">
       <ion-card-header>
         <ion-card-title>
           Recent Orders
-          <ion-button size="small" fill="clear" (click)="viewAllOrders()" *ngIf="orderCounts.total > 0">
+          <ion-button size="small" fill="clear" (click)="viewAllOrders()" *ngIf="allOrders.length > 0" slot="end">
             View All
+            <ion-icon name="arrow-forward-outline" slot="end"></ion-icon>
           </ion-button>
         </ion-card-title>
       </ion-card-header>
-
       <ion-card-content>
-        <ng-container *ngIf="recentOrders$ | async as recentOrders">
-          <ion-list *ngIf="recentOrders.length > 0">
-            <ion-item *ngFor="let order of recentOrders" (click)="viewOrder(order.id)" detail>
-              <ion-label>
-                <h2>Order #{{ order.id.substring(0, 8) }}</h2>
-                <h3>{{ order.customerName }}</h3>
-                <p>{{ formatDate(order.createdAt) }}</p>
-              </ion-label>
-              <ion-badge slot="end" [color]="
-                order.status === 'pending' ? 'warning' :
-                order.status === 'processing' ? 'primary' :
-                order.status === 'shipped' ? 'tertiary' :
-                order.status === 'delivered' ? 'success' :
-                'danger'
-              ">
-                {{ order.status | uppercase }}
-              </ion-badge>
-            </ion-item>
-          </ion-list>
-
-          <div *ngIf="recentOrders.length === 0" class="ion-text-center ion-padding">
-            <ion-icon name="cart-outline" size="large" color="medium"></ion-icon>
-            <h4>No Orders Yet</h4>
-            <p>You haven't received any orders. Create order forms to start collecting customer orders.</p>
+        <ion-list *ngIf="recentOrders && recentOrders.length > 0; else noRecentOrders" lines="full">
+          <ion-item *ngFor="let order of recentOrders" (click)="viewOrder(order.id)" button detail="true">
+            <ion-icon [name]="getStatusIcon(order.status)" [color]="getStatusColor(order.status)" slot="start"></ion-icon>
+            <ion-label>
+              <h2>Order #{{ order.id?.substring(0, 8) }}</h2>
+              <h3 *ngIf="order.customerName">{{ order.customerName }}</h3>
+              <p>{{ formatDate(order.createdAt) }}</p>
+            </ion-label>
+            <ion-badge slot="end" [color]="getStatusColor(order.status)">
+              {{ order.status | titlecase }}
+            </ion-badge>
+          </ion-item>
+        </ion-list>
+        <ng-template #noRecentOrders>
+          <div class="empty-state ion-text-center ion-padding">
+            <ion-icon name="cart-outline" class="empty-state-icon" color="medium"></ion-icon>
+            <h4>No Recent Orders</h4>
+            <p>You haven't received any orders recently.</p>
           </div>
-        </ng-container>
+        </ng-template>
       </ion-card-content>
     </ion-card>
 
-    <ion-card>
+    <ion-card class="data-section-card">
       <ion-card-header>
         <ion-card-title>
           Active Forms
-          <ion-button size="small" fill="clear" (click)="viewAllForms()">
+          <ion-button size="small" fill="clear" (click)="viewAllForms()" *ngIf="activeForms.length > 0 || (formBuilderService.getRetailerForms(currentUser!.uid) | async)?.length" slot="end">
             View All
+            <ion-icon name="arrow-forward-outline" slot="end"></ion-icon>
           </ion-button>
         </ion-card-title>
       </ion-card-header>
-
       <ion-card-content>
-        <ng-container *ngIf="activeForms$ | async as activeForms">
-          <ion-list *ngIf="activeForms.length > 0">
-            <ion-item *ngFor="let form of activeForms" (click)="editForm(form.id)" detail>
-              <ion-label>
-                <h2>{{ form.title }}</h2>
-                <p>{{ form.description || 'No description' }}</p>
-              </ion-label>
-            </ion-item>
-          </ion-list>
-
-          <div *ngIf="activeForms.length === 0" class="ion-text-center ion-padding">
-            <ion-icon name="document-text-outline" size="large" color="medium"></ion-icon>
+        <ion-list *ngIf="activeForms && activeForms.length > 0; else noActiveForms" lines="full">
+          <ion-item *ngFor="let form of activeForms" (click)="editForm(form.id)" button detail="true">
+            <ion-icon name="document-text-outline" slot="start" color="secondary"></ion-icon>
+            <ion-label class="ion-text-wrap">
+              <h2>{{ form.title }}</h2>
+              <p>{{ form.description || 'No description provided.' }}</p>
+            </ion-label>
+          </ion-item>
+        </ion-list>
+        <ng-template #noActiveForms>
+          <div class="empty-state ion-text-center ion-padding">
+            <ion-icon name="document-outline" class="empty-state-icon" color="medium"></ion-icon>
             <h4>No Active Forms</h4>
-            <p>Create a form to start collecting orders from customers.</p>
-            <ion-button expand="block" (click)="createForm()">
-              Create Order Form
+            <p>Create an order form to start collecting customer orders.</p>
+            <ion-button expand="block" (click)="createForm()" class="ion-margin-top">
+              <ion-icon name="add-circle-outline" slot="start"></ion-icon>
+              Create New Form
             </ion-button>
           </div>
-        </ng-container>
+        </ng-template>
       </ion-card-content>
     </ion-card>
-  </div>
+
+    <div class="quick-actions ion-padding">
+        <ion-text color="dark"><h2 class="section-title">Quick Actions</h2></ion-text>
+        <ion-grid>
+            <ion-row>
+                <ion-col size="6" size-md="3">
+                    <ion-button expand="block" fill="outline" (click)="createForm()">
+                        <ion-icon name="add-outline" slot="start"></ion-icon>
+                        New Form
+                    </ion-button>
+                </ion-col>
+                <ion-col size="6" size-md="3">
+                    <ion-button expand="block" fill="outline" (click)="viewAllOrders()">
+                        <ion-icon name="list-outline" slot="start"></ion-icon>
+                        All Orders
+                    </ion-button>
+                </ion-col>
+                 <ion-col size="6" size-md="3">
+                    <ion-button expand="block" fill="outline" routerLink="/retailer/analytics">
+                        <ion-icon name="analytics-outline" slot="start"></ion-icon>
+                        View Analytics
+                    </ion-button>
+                </ion-col>
+                <ion-col size="6" size-md="3">
+                    <ion-button expand="block" fill="outline" routerLink="/retailer/profile">
+                        <ion-icon name="person-outline" slot="start"></ion-icon>
+                        My Profile
+                    </ion-button>
+                </ion-col>
+            </ion-row>
+        </ion-grid>
+    </div>
+
+  </ng-container>
 </ion-content>
-`

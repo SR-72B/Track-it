@@ -29,7 +29,7 @@
 
   <ng-container *ngIf="!isLoading && !errorMessage">
     <ng-container *ngIf="subscription$ | async as sub; else noSubscriptionState">
-      <ion-card class="subscription-card" mode="ios">
+      <ion-card class="subscription-card" mode="md">
         <ion-card-header>
           <ion-card-title color="primary">Current Plan: {{ sub.planName || 'N/A' }}</ion-card-title>
           <ion-card-subtitle>
@@ -42,35 +42,35 @@
         <ion-card-content>
           <ion-list lines="none" class="details-list">
             <ion-item>
-              <ion-icon name="pricetag-outline" slot="start" color="medium"></ion-icon>
+              <ion-icon name="pricetag-outline" slot="start" color="medium" aria-hidden="true"></ion-icon>
               <ion-label class="ion-text-wrap">
                 <h3>Price</h3>
                 <p>{{ sub.price | currency:sub.currency:'symbol':'1.2-2' }} / {{ sub.interval }}</p>
               </ion-label>
             </ion-item>
             <ion-item *ngIf="sub.startDate">
-              <ion-icon name="calendar-outline" slot="start" color="medium"></ion-icon>
+              <ion-icon name="calendar-outline" slot="start" color="medium" aria-hidden="true"></ion-icon>
               <ion-label class="ion-text-wrap">
                 <h3>Started On</h3>
                 <p>{{ formatDate(sub.startDate) }}</p>
               </ion-label>
             </ion-item>
             <ion-item *ngIf="sub.endDate && (sub.status === 'cancelled' || sub.status === 'ended')">
-              <ion-icon name="hourglass-outline" slot="start" color="medium"></ion-icon>
+              <ion-icon name="hourglass-outline" slot="start" color="medium" aria-hidden="true"></ion-icon>
               <ion-label class="ion-text-wrap">
                 <h3>Access Until</h3>
                 <p>{{ formatDate(sub.endDate) }}</p>
               </ion-label>
             </ion-item>
             <ion-item *ngIf="sub.nextBillingDate && (sub.status === 'active' || sub.status === 'trialing')">
-              <ion-icon name="refresh-circle-outline" slot="start" color="medium"></ion-icon>
+              <ion-icon name="refresh-circle-outline" slot="start" color="medium" aria-hidden="true"></ion-icon>
               <ion-label class="ion-text-wrap">
                 <h3>Next Billing Date</h3>
                 <p>{{ formatDate(sub.nextBillingDate) }}</p>
               </ion-label>
             </ion-item>
             <ion-item *ngIf="sub.trialEndDate && sub.status === 'trialing'">
-              <ion-icon name="alarm-outline" slot="start" color="warning"></ion-icon>
+              <ion-icon name="alarm-outline" slot="start" color="warning" aria-hidden="true"></ion-icon>
               <ion-label class="ion-text-wrap">
                 <h3>Trial Ends</h3>
                 <p>{{ formatDate(sub.trialEndDate) }}</p>
@@ -80,7 +80,7 @@
 
           <div class="actions-grid ion-margin-top">
             <ion-button expand="block" fill="outline" (click)="viewInvoices()" [disabled]="isProcessingAction">
-              <ion-icon name="document-text-outline" slot="start"></ion-icon>
+              <ion-icon name="document-text-outline" slot="start" aria-hidden="true"></ion-icon>
               View Invoices
             </ion-button>
             <ion-button
@@ -90,31 +90,31 @@
               (click)="cancelSubscription(sub)"
               *ngIf="sub.status === 'active' || sub.status === 'trialing' || sub.status === 'past_due'"
               [disabled]="isProcessingAction">
-              <ion-spinner *ngIf="isProcessingAction" name="dots"></ion-spinner>
-              <ion-icon *ngIf="!isProcessingAction" name="close-circle-outline" slot="start"></ion-icon>
-              <span *ngIf="!isProcessingAction">Cancel Subscription</span>
+              <ion-spinner *ngIf="isProcessingAction && currentActionPlanId === 'cancel'" name="dots"></ion-spinner>
+              <ion-icon *ngIf="!(isProcessingAction && currentActionPlanId === 'cancel')" name="close-circle-outline" slot="start" aria-hidden="true"></ion-icon>
+              <span *ngIf="!(isProcessingAction && currentActionPlanId === 'cancel')">Cancel Subscription</span>
             </ion-button>
           </div>
         </ion-card-content>
       </ion-card>
 
       <div class="plan-options ion-margin-top" *ngIf="availablePlans$ | async as plans; else loadingPlans">
-        <ion-text color="dark" *ngIf="plans.length > 0"><h2 class="section-title">Change Your Plan</h2></ion-text>
-        <ion-list *ngIf="plans.length > 0" class="plan-list" lines="none">
+        <ion-text color="dark" *ngIf="plans.length > 0 && sub.status !== 'cancelled' && sub.status !== 'ended'"><h2 class="section-title">Change Your Plan</h2></ion-text>
+        <ion-list *ngIf="plans.length > 0 && sub.status !== 'cancelled' && sub.status !== 'ended'" class="plan-list" lines="none">
           <ion-item *ngFor="let plan of plans"
             [button]="plan.id !== sub.planId"
-            (click)="plan.id !== sub.planId ? handleChangePlan(plan.id, sub.id) : null"
-            [disabled]="plan.id === sub.planId || isProcessingAction"
+            (click)="plan.id !== sub.planId ? handleChangePlan(plan.id, sub) : null"
+            [disabled]="plan.id === sub.planId || (isProcessingAction && currentActionPlanId !== plan.id)"
             [class.current-plan-item]="plan.id === sub.planId"
             detail="false">
-            <ion-icon [name]="plan.id === sub.planId ? 'checkmark-circle' : 'radio-button-off-outline'" slot="start" [color]="plan.id === sub.planId ? 'success' : 'medium'"></ion-icon>
+            <ion-icon [name]="plan.id === sub.planId ? 'checkmark-circle' : 'radio-button-off-outline'" slot="start" [color]="plan.id === sub.planId ? 'success' : 'medium'" aria-hidden="true"></ion-icon>
             <ion-label class="ion-text-wrap">
               <h2>{{ plan.name }}</h2>
               <p>{{ plan.price | currency:plan.currency:'symbol':'1.2-2' }} / {{ plan.interval }}</p>
               <p class="plan-description">{{ plan.description }}</p>
             </ion-label>
             <ion-button slot="end" fill="clear" *ngIf="plan.id === sub.planId" disabled class="current-plan-badge">Current</ion-button>
-            <ion-button slot="end" *ngIf="plan.id !== sub.planId" [disabled]="isProcessingAction" size="default" fill="outline">
+            <ion-button slot="end" *ngIf="plan.id !== sub.planId" [disabled]="isProcessingAction && currentActionPlanId !== plan.id" size="default" fill="outline">
               <ion-spinner *ngIf="isProcessingAction && currentActionPlanId === plan.id" name="dots"></ion-spinner>
               <span *ngIf="!(isProcessingAction && currentActionPlanId === plan.id)">Select</span>
             </ion-button>
@@ -122,16 +122,14 @@
         </ion-list>
       </div>
       <ng-template #loadingPlans>
-        <div class="loading-container ion-text-center" *ngIf="isLoading">
-            <ion-spinner name="dots" color="primary"></ion-spinner>
+        <div class="loading-container ion-text-center" *ngIf="isLoading"> <ion-spinner name="dots" color="primary"></ion-spinner>
             <p>Loading available plans...</p>
         </div>
       </ng-template>
     </ng-container>
 
     <ng-template #noSubscriptionState>
-      <div *ngIf="!isLoading" class="ion-text-center">
-        <ion-card class="no-subscription-card" mode="ios">
+      <div *ngIf="!isLoading" class="ion-text-center"> <ion-card class="no-subscription-card" mode="md">
           <ion-card-header>
             <ion-card-title color="primary">No Active Subscription</ion-card-title>
           </ion-card-header>
@@ -141,7 +139,7 @@
               <ion-text color="dark" *ngIf="plans.length > 0"><h2 class="section-title">Available Plans</h2></ion-text>
               <ion-list *ngIf="plans.length > 0" class="plan-list" lines="none">
                 <ion-item *ngFor="let plan of plans" (click)="handleChangePlan(plan.id)" button [disabled]="isProcessingAction" detail="false">
-                  <ion-icon name="rocket-outline" slot="start" color="secondary"></ion-icon>
+                  <ion-icon name="rocket-outline" slot="start" color="secondary" aria-hidden="true"></ion-icon>
                   <ion-label class="ion-text-wrap">
                     <h2>{{ plan.name }}</h2>
                     <p>{{ plan.price | currency:plan.currency:'symbol':'1.2-2' }} / {{ plan.interval }}</p>
@@ -167,222 +165,3 @@
     </ng-template>
   </ng-container>
 </ion-content>
-```
-
-**Corresponding SCSS suggestions (`manage-subscription.component.scss`)**:
-
-You'll need to add/update your SCSS to support some of these changes. Here are some suggestions to complement the HTML:
-
-```scss
-// src/app/payment/manage-subscription/manage-subscription.component.scss
-
-// Ensure this class is added to ion-content for specific padding
-.manage-subscription-content {
-  --padding-bottom: 20px; // Ensure content doesn't stick to bottom tabs if any
-}
-
-.loading-container,
-.error-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 60vh; // Use min-height to allow content to push it down
-  text-align: center;
-  padding: 20px;
-
-  ion-spinner {
-    margin-bottom: 16px;
-    width: 40px;
-    height: 40px;
-  }
-
-  p {
-    color: var(--ion-color-medium-shade);
-    font-size: 1.1em;
-    margin-top: 8px;
-  }
-
-  .error-icon {
-    font-size: 3.5em; // Larger icon for error
-    margin-bottom: 8px;
-  }
-
-  ion-button {
-    margin-top: 20px;
-    --border-radius: 8px;
-  }
-}
-
-.subscription-card,
-.no-subscription-card {
-  margin-left: 0;
-  margin-right: 0;
-  margin-bottom: 24px;
-  border-radius: 12px;
-  box-shadow: var(--card-shadow, 0 4px 15px rgba(0, 0, 0, 0.08));
-
-  ion-card-header {
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--ion-color-step-150, #e0e0e0);
-  }
-
-  ion-card-title {
-    font-size: 1.3em; // Slightly adjusted
-    font-weight: 600;
-  }
-
-  ion-card-subtitle {
-    font-size: 0.9em; // Slightly adjusted
-    margin-top: 4px;
-    .status-text {
-      font-weight: 500;
-      text-transform: capitalize;
-    }
-  }
-}
-
-.details-list {
-  ion-item {
-    --padding-start: 16px; // Add some start padding back for list items
-    --inner-padding-end: 16px; // Add some end padding back
-    --border-color: var(--ion-color-step-100, #f0f0f0); // Very light border for items
-
-    ion-icon[slot="start"] {
-      margin-inline-end: 16px; // Ensure consistent spacing for icons
-      font-size: 1.3em;
-      color: var(--ion-color-medium);
-    }
-
-    ion-label {
-      h3 {
-        font-size: 0.9em;
-        color: var(--ion-color-medium-shade);
-        margin-bottom: 2px;
-        font-weight: 500;
-      }
-      p {
-        font-size: 1em;
-        color: var(--ion-color-dark-shade);
-        font-weight: 400;
-      }
-    }
-  }
-}
-
-.actions-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-  margin-top: 20px;
-  padding: 0 8px 8px; // Add some padding inside the card content for buttons
-
-  @media (min-width: 576px) {
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  }
-
-  ion-button {
-    --border-radius: 20px; // Pill shape buttons
-    text-transform: none;
-    font-weight: 500;
-    margin: 0; // Remove default margins if any from ion-button
-  }
-}
-
-.plan-options {
-  margin-top: 28px;
-  .section-title {
-    font-size: 1.4em;
-    font-weight: 600;
-    margin-bottom: 16px;
-    padding-left: 4px; // Slight indent if not in a card
-    color: var(--ion-color-dark-shade);
-  }
-}
-
-.plan-list {
-  border-radius: 12px;
-  box-shadow: var(--card-shadow, 0 4px 15px rgba(0, 0, 0, 0.08));
-  overflow: hidden; // For rounded corners on items
-
-  ion-item {
-    --padding-start: 16px;
-    --inner-padding-end: 16px;
-    --border-color: var(--ion-color-step-100, #f0f0f0);
-    --highlight-color-focused: var(--ion-color-primary-tint); // Optional focus highlight
-
-    &.current-plan-item {
-      --background: var(--ion-color-light-tint); // Highlight current plan subtly
-      ion-label h2 {
-        color: var(--ion-color-primary);
-      }
-    }
-    
-    ion-icon[slot="start"] {
-      margin-inline-end: 16px;
-      font-size: 1.4em;
-    }
-
-    ion-label {
-      h2 {
-        font-weight: 600;
-        font-size: 1.15em;
-        margin-bottom: 4px;
-      }
-      p {
-        font-size: 0.95em;
-        color: var(--ion-color-medium-shade);
-      }
-      .plan-description {
-        font-size: 0.85em;
-        color: var(--ion-color-step-700, #666);
-        white-space: normal;
-        margin-top: 6px;
-      }
-    }
-    ion-button[slot="end"] {
-      margin-left: 8px; // Space between label and button
-      --border-radius: 20px;
-      &.current-plan-badge {
-        font-size: 0.8em;
-        color: var(--ion-color-success);
-        --padding-start: 8px;
-        --padding-end: 8px;
-      }
-    }
-  }
-}
-
-.no-subscription-card {
-  ion-card-content p {
-    margin-bottom: 20px;
-    font-size: 1.05em;
-    color: var(--ion-color-medium-shade);
-  }
-}
-```
-
-**Key Visual Improvements in HTML & SCSS:**
-
-* **Loading/Error States**: Made more prominent and centered with icons.
-* **Cards (`ion-card`)**: Added `mode="ios"` for a consistent look (optional, remove if you prefer platform-adaptive cards). Added borders and adjusted padding for better definition.
-* **Lists (`ion-list` and `ion-item`)**:
-    * Used `lines="none"` on the main subscription details list.
-    * Improved label structure within items using `<h3>` for titles and `<p>` for values for better semantics and styling control.
-    * Added `ion-text-wrap` to labels to prevent text truncation.
-    * Adjusted icon colors and margins.
-* **Action Buttons**:
-    * Used `fill="outline"` for some buttons to provide visual distinction.
-    * Added icons to buttons.
-    * The spinner logic in the HTML for plan selection buttons is still a bit simplified (`isProcessingAction && currentActionPlanId === plan.id`). For this to work perfectly, your TypeScript would need to set a `currentActionPlanId` when a specific plan change is initiated. If `isProcessingAction` is a general boolean, all "Select" buttons might show a spinner.
-* **Plan Options**:
-    * Styled the "Change Your Plan" and "Available Plans" sections with a clear title.
-    * Plan items are designed to be more tappable and informative.
-    * Added a "Current" badge for the currently active plan.
-* **SCSS**:
-    * Added `.manage-subscription-content` for specific page padding.
-    * Enhanced styles for loading/error containers.
-    * Refined card, list, item, and button styles for a cleaner and more modern appearance.
-    * Added hover effects for plan items.
-
-Remember to test these changes on different screen sizes. You might need to adjust the `currentActionPlanId` logic in your TypeScript if you want more granular spinner control on the plan selection buttons. The current HTML assumes such a variable might exist. If not, the spinner will show on all "Select" buttons when `isProcessingAction` is tr

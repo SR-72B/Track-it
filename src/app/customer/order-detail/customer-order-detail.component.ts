@@ -1,35 +1,34 @@
 // src/app/customer/order-detail/customer-order-detail.component.ts
-import { Component, OnInit, OnDestroy } from '@angular/core'; // Added OnDestroy
-import { ActivatedRoute, Router, RouterModule } from '@angular/router'; // Added RouterModule
-import { CommonModule } from '@angular/common'; // Added CommonModule
-import { AlertController, LoadingController, ToastController, IonicModule } from '@ionic/angular'; // Added IonicModule
-import { Observable, Subscription, firstValueFrom, of } from 'rxjs'; // Added Subscription, of
-import { finalize, catchError } from 'rxjs/operators'; // Added catchError
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core'; // Added ChangeDetectorRef
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { AlertController, LoadingController, ToastController, IonicModule } from '@ionic/angular';
+import { Observable, Subscription, firstValueFrom, of } from 'rxjs';
+import { finalize, catchError, tap, filter } from 'rxjs/operators'; // Added filter and tap
 
 import { Order, OrderUpdate } from '../../retailer/order-management/order.service'; // Ensure this path is correct
 import { CustomerOrderService } from '../order/customer-order.service'; // Ensure this path is correct
 
 @Component({
   selector: 'app-customer-order-detail',
-  templateUrl: './customer-order-detail.component.html', // Ensure this file exists
-  styleUrls: ['./customer-order-detail.component.scss'],   // Ensure this file exists
-  standalone: true, // Mark component as standalone
+  templateUrl: './customer-order-detail.component.html',
+  styleUrls: ['./customer-order-detail.component.scss'],
+  standalone: true,
   imports: [
-    CommonModule,     // For *ngIf, *ngFor, async pipe, etc.
-    IonicModule,      // For Ionic components (ion-card, ion-list, ion-button, ion-spinner etc.) and services
-    RouterModule      // For routerLink (if used in the template)
+    CommonModule,
+    IonicModule,
+    RouterModule
   ]
 })
 export class CustomerOrderDetailComponent implements OnInit, OnDestroy {
-  orderId: string | null = null; // Initialize to null
-  orderData$: Observable<{order: Order, updates: OrderUpdate[]} | null > = of(null); // Initialize with null observable
+  orderId: string | null = null;
+  orderData$: Observable<{order: Order, updates: OrderUpdate[]} | null > = of(null);
   isLoading = true;
   isCancelling = false;
   errorMessage: string | null = null;
 
   private routeSubscription: Subscription | undefined;
-  private orderDataSubscription: Subscription | undefined;
-
+  // orderDataSubscription is removed as we'll rely on async pipe for the main data flow
 
   constructor(
     private route: ActivatedRoute,
@@ -37,7 +36,8 @@ export class CustomerOrderDetailComponent implements OnInit, OnDestroy {
     private customerOrderService: CustomerOrderService,
     private alertController: AlertController,
     private loadingController: LoadingController,
-    private toastController: ToastController
+    private toastController: ToastController,
+    private cdr: ChangeDetectorRef // Injected ChangeDetectorRef
   ) {}
 
   ngOnInit() {
@@ -45,24 +45,22 @@ export class CustomerOrderDetailComponent implements OnInit, OnDestroy {
       const id = params['id'];
       if (id) {
         this.orderId = id;
-        this.loadOrder();
+        this.loadOrderDetails(); // Changed from loadOrder to loadOrderDetails for clarity
       } else {
         console.error('Order ID not found in route parameters');
         this.errorMessage = 'Order ID is missing. Cannot display order details.';
         this.isLoading = false;
-        // Optionally navigate back or show a more prominent error
         this.router.navigate(['/customer/orders']);
       }
     });
   }
 
-  async loadOrder(refresherEvent?: any) {
+  async loadOrderDetails(refresherEvent?: any) {
     if (!this.orderId) {
       this.isLoading = false;
       this.errorMessage = 'Cannot load order: Order ID is missing.';
       if (refresherEvent) refresherEvent.target.complete();
-      console.error(this.errorMessage);
-      // No need for toast here as ngOnInit error handling or template will show message
+      this.cdr.detectChanges();
       return;
     }
 
@@ -70,7 +68,7 @@ export class CustomerOrderDetailComponent implements OnInit, OnDestroy {
     this.errorMessage = null;
     let loadingIndicator: HTMLIonLoadingElement | undefined;
 
-    if (!refresherEvent) { // Only show full page loader if not a refresher action
+    if (!refresherEvent) {
       loadingIndicator = await this.loadingController.create({
         message: 'Loading order details...',
         spinner: 'crescent',
@@ -79,17 +77,23 @@ export class CustomerOrderDetailComponent implements OnInit, OnDestroy {
       await loadingIndicator.present();
     }
 
-    // Unsubscribe from previous order data subscription if it exists
-    if (this.orderDataSubscription) {
-        this.orderDataSubscription.unsubscribe();
-    }
-
-    this.orderDataSubscription = this.customerOrderService.getOrderWithUpdates(this.orderId).pipe(
+    this.orderData$ = this.customerOrderService.getOrderWithUpdates(this.orderId).pipe(
+      tap(data => { // Use tap for side-effects like logging or simple checks
+        if (!data && !this.errorMessage) {
+          this.errorMessage = 'Order not found or could not be loaded.';
+        }
+        // Mark updates as seen after data is loaded (or attempted to load)
+        if (this.orderId && data && data.order && !this.errorMessage) {
+          firstValueFrom(this.customerOrderService.markUpdatesSeen(this.orderId))
+            .catch(error => console.warn('Failed to mark updates as seen:', error));
+        }
+        this.cdr.detectChanges(); // Ensure UI updates after data emission
+      }),
       catchError(err => {
         console.error('Error fetching order details:', err);
         this.errorMessage = 'Failed to load order details. Please try again.';
-        this.orderData$ = of(null); // Set to null observable on error
-        return of(null); // Propagate null or an empty structure
+        this.cdr.detectChanges(); // Ensure error message is displayed
+        return of(null); // Return null observable on error
       }),
       finalize(async () => {
         this.isLoading = false;
@@ -99,31 +103,16 @@ export class CustomerOrderDetailComponent implements OnInit, OnDestroy {
         if (refresherEvent) {
           refresherEvent.target.complete();
         }
-        // Mark updates as seen after data is loaded (or attempted to load)
-        if (this.orderId && !this.errorMessage) { // Only if orderId exists and no major error occurred
-          try {
-            await firstValueFrom(this.customerOrderService.markUpdatesSeen(this.orderId));
-          } catch (error) {
-            console.warn('Failed to mark updates as seen:', error);
-            // This is a background task, so typically no need to show a user-facing error unless critical
-          }
-        }
+        this.cdr.detectChanges(); // Ensure loading state updates view
       })
-    ).subscribe(data => {
-        if(data){
-            this.orderData$ = of(data); // Update the observable for the async pipe
-        } else if (!this.errorMessage) {
-            // If data is null from catchError and no specific error message was set yet
-            this.errorMessage = 'Order details could not be loaded.';
-        }
-    });
+    );
   }
 
   formatDate(dateInput: any): string {
     if (!dateInput) return 'N/A';
     let d: Date;
-    if (dateInput && typeof dateInput.seconds === 'number' && typeof dateInput.nanoseconds === 'number') {
-      d = new Date(dateInput.seconds * 1000);
+    if (dateInput && typeof dateInput.seconds === 'number') { // Firebase Timestamp
+      d = new Date(dateInput.seconds * 1000 + (dateInput.nanoseconds || 0) / 1000000);
     } else if (dateInput instanceof Date) {
       d = dateInput;
     } else {
@@ -133,17 +122,17 @@ export class CustomerOrderDetailComponent implements OnInit, OnDestroy {
       console.warn('Invalid date input for formatDate:', dateInput);
       return 'Invalid Date';
     }
-    return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 
   canCancel(order: Order | undefined | null): boolean {
     if (!order) return false;
-    if (['cancelled', 'delivered', 'completed'].includes(order.status)) {
+    if (['cancelled', 'delivered', 'completed'].includes(order.status)) { // Assuming 'completed' is a final status
       return false;
     }
     if (!order.cancellationDeadline) {
       console.warn('Cancellation deadline is not set for order:', order.id);
-      return false; // Or true, depending on business logic if deadline is missing
+      return false;
     }
     const now = new Date();
     let deadline: Date;
@@ -162,9 +151,8 @@ export class CustomerOrderDetailComponent implements OnInit, OnDestroy {
     return now <= deadline;
   }
 
-  async cancelOrder(order: Order | undefined | null) {
+  async cancelOrder(order: Order | undefined | null) { // Renamed to avoid conflict if template uses 'cancelOrder'
     if (!order || !order.id) {
-      console.error('Order or Order ID is undefined, cannot cancel.');
       this.showToast('Cannot cancel order: Order details missing.', 'danger');
       return;
     }
@@ -194,7 +182,7 @@ export class CustomerOrderDetailComponent implements OnInit, OnDestroy {
             try {
               await firstValueFrom(this.customerOrderService.cancelOrder(order.id!, reason));
               this.showToast('Order cancelled successfully.', 'success');
-              await this.loadOrder(); // Refresh order details
+              this.loadOrderDetails(); // Refresh order details
             } catch (error: any) {
               console.error('Error cancelling order:', error);
               this.showErrorAlert('Cancellation Failed', error?.message || 'An unexpected error occurred.');
@@ -229,15 +217,14 @@ export class CustomerOrderDetailComponent implements OnInit, OnDestroy {
   }
 
   doRefresh(event: any) {
-    this.loadOrder(event);
+    this.loadOrderDetails(event);
   }
 
   ngOnDestroy() {
     if (this.routeSubscription) {
       this.routeSubscription.unsubscribe();
     }
-    if (this.orderDataSubscription) {
-        this.orderDataSubscription.unsubscribe();
-    }
+    // No need to unsubscribe from orderDataSubscription if it was never assigned
+    // because orderData$ is consumed by async pipe.
   }
 }

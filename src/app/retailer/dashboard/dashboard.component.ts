@@ -2,7 +2,7 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { IonicModule, LoadingController } from '@ionic/angular';
+import { IonicModule, LoadingController, AlertController, ToastController } from '@ionic/angular'; // Added AlertController, ToastController
 
 import { Observable, Subscription, combineLatest, of, firstValueFrom } from 'rxjs';
 import { map, first, finalize, switchMap, catchError, tap } from 'rxjs/operators';
@@ -45,6 +45,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private formBuilderService: FormBuilderService,
     private router: Router,
     private loadingController: LoadingController,
+    private alertController: AlertController, // Added AlertController
+    private toastController: ToastController, // Added ToastController
     private cdr: ChangeDetectorRef
   ) {
     this.user$ = this.authService.currentUser$;
@@ -77,44 +79,32 @@ export class DashboardComponent implements OnInit, OnDestroy {
       switchMap(user => {
         const ordersData$ = this.orderService.getRetailerOrders(user.uid).pipe(
           tap(orders => {
-            this.orderCounts.total = orders.length;
-            this.orderCounts.pending = orders.filter(o => o.status === 'pending').length;
-            this.orderCounts.processing = orders.filter(o => o.status === 'processing').length;
-            this.orderCounts.shipped = orders.filter(o => o.status === 'shipped').length;
-            this.orderCounts.delivered = orders.filter(o => o.status === 'delivered').length;
-            this.orderCounts.cancelled = orders.filter(o => o.status === 'cancelled').length;
+            this.allOrders = orders; // Store all orders for accurate counting
+            this.calculateOrderStatistics(orders); // Calculate stats based on all fetched orders
             this.cdr.detectChanges();
           }),
           map(orders => orders.sort((a, b) => {
-            // Helper function to get milliseconds from various date formats
             const getMs = (timestamp: any): number => {
               if (!timestamp) return 0;
-              // If it's already a Date object
-              if (timestamp instanceof Date) {
-                return timestamp.getTime();
-              }
-              // If it's a Firestore Timestamp-like object (has seconds property)
+              if (timestamp instanceof Date) return timestamp.getTime();
               if (typeof (timestamp as any).seconds === 'number') {
                 return new Date((timestamp as any).seconds * 1000 + ((timestamp as any).nanoseconds || 0) / 1000000).getTime();
               }
-              // Try to parse if it's a string or number date
               const d = new Date(timestamp);
               return isNaN(d.getTime()) ? 0 : d.getTime();
             };
-
-            const timeA = getMs(a.createdAt);
-            const timeB = getMs(b.createdAt);
-            return timeB - timeA; // Descending sort for most recent first
-          }).slice(0, 5)),
+            return getMs(b.createdAt) - getMs(a.createdAt);
+          }).slice(0, 5)), // Take 5 most recent for display
           catchError(err => {
             console.error('Error loading recent orders:', err);
             this.errorMessage = 'Failed to load recent orders.';
+            this.orderCounts = { total: 0, pending: 0, processing: 0, shipped: 0, delivered: 0, cancelled: 0 }; // Reset counts
             return of([]);
           })
         );
 
         const formsData$ = this.formBuilderService.getRetailerForms(user.uid).pipe(
-          map((forms: OrderForm[]) => forms.filter(form => form.active).slice(0, 3)),
+          map((forms: OrderForm[]) => forms.filter(form => form.active).sort((a,b) => (a.title || '').localeCompare(b.title || '')).slice(0, 3)),
           catchError(err => {
             console.error('Error loading active forms:', err);
             if (!this.errorMessage) this.errorMessage = 'Failed to load active forms.';
@@ -125,7 +115,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
       }),
       catchError(userError => {
         console.error('Error fetching user for dashboard:', userError);
-        this.errorMessage = 'Could not load user data for the dashboard.';
+        this.errorMessage = 'Could not load user data for the dashboard. Please log in again.';
+        this.user$ = of(null); // Clear user observable on error
+        this.recentOrders = [];
+        this.activeForms = [];
+        this.orderCounts = { total: 0, pending: 0, processing: 0, shipped: 0, delivered: 0, cancelled: 0 };
         return of([[], []] as [Order[], OrderForm[]]);
       }),
       finalize(async () => {
@@ -139,18 +133,33 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.cdr.detectChanges();
       })
     ).subscribe(
-      ([orders, forms]) => {
-        this.recentOrders = orders;
-        this.activeForms = forms;
+      ([recentOrdersData, activeFormsData]) => {
+        this.recentOrders = recentOrdersData;
+        this.activeForms = activeFormsData;
+        // Statistics are now calculated in the 'tap' operator of ordersData$
       },
       (error) => {
         console.error('Critical error loading dashboard data:', error);
         this.errorMessage = 'An unexpected error occurred while loading dashboard data.';
         this.recentOrders = [];
         this.activeForms = [];
+        this.orderCounts = { total: 0, pending: 0, processing: 0, shipped: 0, delivered: 0, cancelled: 0 };
       }
     );
   }
+
+  // Added allOrders property to component and pass it here
+  private allOrders: Order[] = [];
+
+  calculateOrderStatistics(orders: Order[]) { // Takes orders as parameter
+    this.orderCounts.total = orders.length;
+    this.orderCounts.pending = orders.filter(o => o.status === 'pending').length;
+    this.orderCounts.processing = orders.filter(o => o.status === 'processing').length;
+    this.orderCounts.shipped = orders.filter(o => o.status === 'shipped').length;
+    this.orderCounts.delivered = orders.filter(o => o.status === 'delivered').length;
+    this.orderCounts.cancelled = orders.filter(o => o.status === 'cancelled').length;
+  }
+
 
   viewAllOrders() {
     this.router.navigate(['/retailer/orders']);
@@ -161,6 +170,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.router.navigate(['/retailer/orders', orderId]);
     } else {
         console.warn('View order called with undefined orderId');
+        this.showToast('Cannot view order: Order ID is missing.', 'danger');
     }
   }
 
@@ -173,6 +183,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.router.navigate(['/retailer/forms/edit', formId]);
     } else {
         console.warn('Edit form called with undefined formId');
+        this.showToast('Cannot edit form: Form ID is missing.', 'danger');
     }
   }
 
@@ -208,6 +219,38 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
+  getStatusIcon(status: string): string {
+    switch (status) {
+      case 'pending': return 'time-outline';
+      case 'processing': return 'sync-circle-outline';
+      case 'shipped': return 'airplane-outline';
+      case 'delivered': return 'checkmark-done-circle-outline';
+      case 'cancelled': return 'close-circle-outline';
+      default: return 'ellipse-outline';
+    }
+  }
+
+  async presentStatisticsAlert() {
+    const alert = await this.alertController.create({
+        header: 'Order Statistics Summary',
+        message: `
+            Total Orders: ${this.orderCounts.total}<br>
+            Pending: ${this.orderCounts.pending}<br>
+            Processing: ${this.orderCounts.processing}<br>
+            Shipped: ${this.orderCounts.shipped}<br>
+            Delivered: ${this.orderCounts.delivered}<br>
+            Cancelled: ${this.orderCounts.cancelled}
+        `,
+        buttons: ['OK']
+    });
+    await alert.present();
+  }
+
+  async showToast(message: string, color: 'success' | 'warning' | 'danger' | string = 'medium', duration: number = 3000) {
+    const toast = await this.toastController.create({ message, duration, color, position: 'top' });
+    toast.present();
+  }
+
   doRefresh(event: any) {
     this.loadDashboardData(event);
   }
@@ -218,4 +261,5 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 }
+
 

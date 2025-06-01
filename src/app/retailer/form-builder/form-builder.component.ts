@@ -1,12 +1,12 @@
 // src/app/retailer/form-builder/form-builder.component.ts
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core'; // Added ChangeDetectorRef
 import { FormBuilder, FormGroup, FormArray, Validators, FormControl, ReactiveFormsModule, AbstractControl } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AlertController, LoadingController, ToastController, IonicModule } from '@ionic/angular';
 
 import { AuthService, User } from '../../auth/auth.service';
-import { FormBuilderService, OrderForm, FormField } from './form-builder.service';
+import { FormBuilderService, OrderForm, FormField } from './form-builder.service'; // Ensure FormField has all needed props
 import { Subscription, firstValueFrom, of } from 'rxjs';
 import { first, filter, catchError, finalize, tap } from 'rxjs/operators';
 
@@ -65,7 +65,8 @@ export class FormBuilderComponent implements OnInit, OnDestroy {
     private router: Router,
     private alertController: AlertController,
     private loadingController: LoadingController,
-    private toastController: ToastController
+    private toastController: ToastController,
+    private cdr: ChangeDetectorRef // Injected ChangeDetectorRef
   ) {}
 
   ngOnInit() {
@@ -92,9 +93,14 @@ export class FormBuilderComponent implements OnInit, OnDestroy {
       active: [initialData?.active !== undefined ? initialData.active : true]
     });
 
+    const fieldsArray = this.formBuilderForm.get('fields') as FormArray;
+    while (fieldsArray.length) { // Clear existing fields before populating for edit mode
+        fieldsArray.removeAt(0);
+    }
     if (initialData && initialData.fields) {
         initialData.fields.forEach(field => this.addField(field));
     }
+    this.cdr.detectChanges(); // Ensure form updates reflect in the view
   }
 
   async loadFormToEdit(formId: string) {
@@ -118,6 +124,7 @@ export class FormBuilderComponent implements OnInit, OnDestroy {
       finalize(async () => {
         this.isLoading = false;
         await loading.dismiss().catch(e => console.warn("Loader dismiss error", e));
+        this.cdr.detectChanges();
       })
     ).subscribe(form => {
       if (form) {
@@ -172,15 +179,26 @@ export class FormBuilderComponent implements OnInit, OnDestroy {
     this.getOptions(fieldIndex).removeAt(optionIndex);
   }
 
-  onFileTypeChange(event: any) {
-    const selectedValues = event.detail.value as string[];
+  toggleFileType(event: any, typeValue: string) {
     const fileTypesFormArray = this.formAllowedFileTypes;
-    while (fileTypesFormArray.length) {
-      fileTypesFormArray.removeAt(0);
-    }
-    selectedValues.forEach(typeValue => {
+    if (event.detail.checked) {
       fileTypesFormArray.push(this.fb.control(typeValue));
-    });
+    } else {
+      let i = 0;
+      while (i < fileTypesFormArray.length) {
+        if (fileTypesFormArray.at(i).value === typeValue) {
+          fileTypesFormArray.removeAt(i);
+        } else {
+          i++;
+        }
+      }
+    }
+    this.formBuilderForm.get('allowedFileTypes')?.markAsDirty();
+    this.formBuilderForm.get('allowedFileTypes')?.updateValueAndValidity();
+  }
+
+  isFileTypeSelected(typeValue: string): boolean {
+    return this.formAllowedFileTypes.value.includes(typeValue);
   }
 
   isFieldTypeWithOptions(fieldIndex: number): boolean {
@@ -197,6 +215,11 @@ export class FormBuilderComponent implements OnInit, OnDestroy {
       this.markFormGroupTouched(this.formBuilderForm);
       this.showToast('Please ensure all required fields are filled correctly.', 'warning');
       return;
+    }
+    if (this.formBuilderForm.get('allowFileUpload')?.value && this.formAllowedFileTypes.length === 0) {
+        this.showToast('If file uploads are allowed, please select at least one allowed file type.', 'warning');
+        this.formBuilderForm.get('allowedFileTypes')?.markAsTouched();
+        return;
     }
 
     this.isSubmitting = true;
@@ -238,33 +261,29 @@ export class FormBuilderComponent implements OnInit, OnDestroy {
         throw new Error("User not authenticated. Cannot save form.");
       }
 
-      // Corrected type for formDataForService
       const formDataForService: Omit<OrderForm, 'id' | 'createdAt' | 'updatedAt'> = {
         retailerId: currentUser.uid,
         title: formValue.title.trim(),
-        description: formValue.description?.trim() || '', // Ensure string for non-optional if needed by Omit type
+        description: formValue.description?.trim() || '',
         fields: fieldsToSave,
-        active: formValue.active, // This is a boolean from the form
-        allowFileUpload: formValue.allowFileUpload, // This is a boolean
-        allowedFileTypes: formValue.allowedFileTypes || [], // This is string[]
-        maxFilesAllowed: formValue.maxFilesAllowed, // This is number
-        cancellationPolicy: formValue.cancellationPolicy?.trim() || '', // Ensure string
-        submissionInstructions: formValue.submissionInstructions?.trim() || '', // Ensure string
+        active: formValue.active,
+        allowFileUpload: formValue.allowFileUpload,
+        allowedFileTypes: formValue.allowFileUpload ? (formValue.allowedFileTypes || []) : [],
+        maxFilesAllowed: formValue.allowFileUpload ? formValue.maxFilesAllowed : 0,
+        cancellationPolicy: formValue.cancellationPolicy?.trim() || '',
+        submissionInstructions: formValue.submissionInstructions?.trim() || '',
       };
 
       if (this.isEditing && this.formId) {
-        // If updateOrderForm expects Partial<Omit<...>>, this is fine.
-        // If it expects Omit<...> directly, also fine.
-        // The key is that formDataForService now correctly reflects that 'active' is present.
         await this.formBuilderService.updateOrderForm(this.formId, formDataForService);
       } else {
-        // createOrderForm should expect Omit<OrderForm, 'id' | 'createdAt' | 'updatedAt'>
         const newForm = await this.formBuilderService.createOrderForm(formDataForService);
         console.log('New form created with ID:', newForm.id);
       }
       
       this.showToast(this.isEditing ? 'Form updated successfully!' : 'Form created successfully!', 'success');
-      this.formBuilderForm.reset();
+      this.formBuilderForm.reset(); // Reset to pristine state
+      this.initForm(); // Re-initialize with defaults for a new form
       this.router.navigate(['/retailer/forms']);
 
     } catch (error: any) {
@@ -336,5 +355,6 @@ export class FormBuilderComponent implements OnInit, OnDestroy {
     }
   }
 }
+
 
 

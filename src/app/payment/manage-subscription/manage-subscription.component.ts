@@ -1,10 +1,10 @@
 // src/app/payment/manage-subscription/manage-subscription.component.ts
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core'; // Added ChangeDetectorRef
 import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common'; // For *ngIf, *ngFor, async pipe
 import { IonicModule, LoadingController, AlertController, ToastController } from '@ionic/angular';
 import { Observable, Subscription, of, firstValueFrom } from 'rxjs';
-import { switchMap, catchError, finalize, tap, filter, map } from 'rxjs/operators'; // Added map
+import { switchMap, catchError, finalize, tap, filter, map } from 'rxjs/operators';
 
 import { AuthService, User } from '../../auth/auth.service';
 // Ensure SubscriptionDetails and Plan interfaces are correctly defined and EXPORTED from payment.service.ts
@@ -40,40 +40,43 @@ export class ManageSubscriptionComponent implements OnInit, OnDestroy {
     private router: Router,
     private alertController: AlertController,
     private loadingController: LoadingController,
-    private toastController: ToastController
+    private toastController: ToastController,
+    private cdr: ChangeDetectorRef // Injected ChangeDetectorRef
   ) {}
 
   ngOnInit() {
     this.userSubscription = this.authService.currentUser$.pipe(
-      tap(user => this.currentUser = user), // Keep track of the current user
-      filter((user): user is User => !!user && !!user.uid), // Ensure user and user.uid exist
+      tap(user => this.currentUser = user),
+      filter((user): user is User => !!user && !!user.uid),
       switchMap(user => {
         return this.authService.isRetailer().pipe(
-          map(isRetailer => ({ user, isRetailer })) // map is now imported
+          map(isRetailer => ({ user, isRetailer }))
         );
       }),
       catchError(authError => {
         console.error("Error in user authentication pipeline:", authError);
         this.errorMessage = "Failed to determine user status.";
         this.isLoading = false;
-        return of({ user: null, isRetailer: false }); // Emit a default/error state
+        this.cdr.detectChanges();
+        return of({ user: null, isRetailer: false });
       })
     ).subscribe(async ({ user, isRetailer }) => {
-      if (!user) { // This check might be redundant due to filter but good for clarity
+      if (!user) {
         this.errorMessage = "You must be logged in to manage subscriptions.";
         this.isLoading = false;
+        this.cdr.detectChanges();
         this.router.navigate(['/auth/login']);
         return;
       }
       if (!isRetailer) {
         this.errorMessage = "Subscription management is only available for retailers.";
         this.isLoading = false;
+        this.cdr.detectChanges();
         await this.showToast('Access denied. This page is for retailers only.', 'warning');
-        this.router.navigate(['/customer/dashboard']); // Or your main non-retailer page
+        this.router.navigate(['/customer/dashboard']);
         return;
       }
-      // User is a logged-in retailer
-      this.currentUser = user; // Ensure currentUser is set for other methods
+      this.currentUser = user; // Ensure currentUser is set
       this.loadSubscriptionDetails();
       this.loadAvailablePlans();
     });
@@ -84,6 +87,7 @@ export class ManageSubscriptionComponent implements OnInit, OnDestroy {
       this.errorMessage = "User information is not available.";
       this.isLoading = false;
       if (refresherEvent) refresherEvent.target.complete();
+      this.cdr.detectChanges();
       return;
     }
 
@@ -97,21 +101,23 @@ export class ManageSubscriptionComponent implements OnInit, OnDestroy {
     }
 
     this.subscription$ = this.paymentService.getSubscription(this.currentUser.uid).pipe(
+      tap(() => this.cdr.detectChanges()), // Ensure view updates after data fetch
       catchError(err => {
         console.error('Error fetching subscription:', err);
         this.errorMessage = 'Failed to load subscription details.';
+        this.cdr.detectChanges();
         return of(null);
       }),
       finalize(async () => {
         this.isLoading = false;
         if (loader) await loader.dismiss().catch(e => console.warn("Loader dismiss error", e));
         if (refresherEvent) refresherEvent.target.complete();
+        this.cdr.detectChanges();
       })
     );
   }
 
   async loadAvailablePlans() {
-    // Ensure your PaymentService has getAvailablePlans method
     if (typeof this.paymentService.getAvailablePlans !== 'function') {
         console.error('PaymentService.getAvailablePlans is not a function. Please implement it.');
         this.availablePlans$ = of([]);
@@ -119,9 +125,11 @@ export class ManageSubscriptionComponent implements OnInit, OnDestroy {
         return;
     }
     this.availablePlans$ = this.paymentService.getAvailablePlans('retailer').pipe(
+      tap(() => this.cdr.detectChanges()),
       catchError(err => {
         console.error('Error fetching available plans:', err);
         this.showToast('Could not load available plans.', 'danger');
+        this.cdr.detectChanges();
         return of([]);
       })
     );
@@ -132,27 +140,25 @@ export class ManageSubscriptionComponent implements OnInit, OnDestroy {
       this.showToast('User information missing.', 'danger');
       return;
     }
-    this.currentActionPlanId = newPlanId; // For spinner on specific button
+    this.currentActionPlanId = newPlanId;
     this.isProcessingAction = true;
     const loading = await this.loadingController.create({ message: 'Updating subscription...' });
     await loading.present();
 
     try {
       if (currentSubscription && currentSubscription.id) {
-        // Ensure your PaymentService has updateSubscription method
         if (typeof this.paymentService.updateSubscription !== 'function') {
             throw new Error('updateSubscription method is not available in PaymentService.');
         }
         await firstValueFrom(this.paymentService.updateSubscription(this.currentUser.uid, currentSubscription.id, newPlanId));
       } else {
-        // Ensure your PaymentService has createSubscription method
          if (typeof this.paymentService.createSubscription !== 'function') {
             throw new Error('createSubscription method is not available in PaymentService.');
         }
         await firstValueFrom(this.paymentService.createSubscription(this.currentUser.uid, newPlanId));
       }
       this.showToast('Subscription updated successfully!', 'success');
-      this.loadSubscriptionDetails();
+      this.loadSubscriptionDetails(); // Refresh details
     } catch (error: any) {
       console.error('Error changing plan:', error);
       this.showErrorAlert('Update Failed', error.message || 'Could not update subscription.');
@@ -160,6 +166,7 @@ export class ManageSubscriptionComponent implements OnInit, OnDestroy {
       this.isProcessingAction = false;
       this.currentActionPlanId = null;
       await loading.dismiss().catch(e => console.warn("Loader dismiss error", e));
+      this.cdr.detectChanges();
     }
   }
 
@@ -171,8 +178,10 @@ export class ManageSubscriptionComponent implements OnInit, OnDestroy {
     this.showToast('Viewing invoices - to be implemented.', 'medium');
     // Example:
     // if (typeof this.paymentService.getBillingPortalUrl === 'function') {
-    //   const portalUrl = await firstValueFrom(this.paymentService.getBillingPortalUrl(this.currentUser.uid));
-    //   if (portalUrl) window.open(portalUrl, '_blank'); else this.showToast('Billing portal not available.', 'warning');
+    //   try {
+    //     const portalUrl = await firstValueFrom(this.paymentService.getBillingPortalUrl(this.currentUser.uid));
+    //     if (portalUrl) window.open(portalUrl, '_blank'); else this.showToast('Billing portal not available.', 'warning');
+    //   } catch (e) { this.showToast('Could not retrieve billing portal URL.', 'danger');}
     // } else { this.showToast('Billing portal functionality not implemented.', 'warning'); }
   }
 
@@ -181,7 +190,6 @@ export class ManageSubscriptionComponent implements OnInit, OnDestroy {
       this.showToast('Subscription details are missing. Cannot cancel.', 'danger');
       return;
     }
-    // Adjusted status check to be more inclusive of typical "ended" states
     if (['cancelled', 'ended', 'incomplete_expired'].includes(subscription.status.toLowerCase())) {
       this.showToast('Subscription is already cancelled or has ended.', 'medium');
       return;
@@ -196,11 +204,12 @@ export class ManageSubscriptionComponent implements OnInit, OnDestroy {
           text: 'Yes, Cancel',
           cssClass: 'alert-button-danger',
           handler: async () => {
+            this.currentActionPlanId = 'cancel'; // For spinner on cancel button
             this.isProcessingAction = true;
             const loading = await this.loadingController.create({ message: 'Cancelling subscription...' });
             await loading.present();
             try {
-              await firstValueFrom(this.paymentService.cancelSubscription(subscription.id!, subscription.userId)); // Added non-null assertion for id
+              await firstValueFrom(this.paymentService.cancelSubscription(subscription.id!, subscription.userId));
               this.showToast('Subscription cancellation request processed.', 'success');
               this.loadSubscriptionDetails();
             } catch (error: any) {
@@ -208,7 +217,9 @@ export class ManageSubscriptionComponent implements OnInit, OnDestroy {
               this.showErrorAlert('Cancellation Failed', error.message || 'Could not cancel subscription.');
             } finally {
               this.isProcessingAction = false;
+              this.currentActionPlanId = null;
               await loading.dismiss().catch(e => console.warn("Loader dismiss error", e));
+              this.cdr.detectChanges();
             }
           }
         }
@@ -221,7 +232,7 @@ export class ManageSubscriptionComponent implements OnInit, OnDestroy {
     if (!dateInput) return 'N/A';
     let d: Date;
     if (dateInput && typeof dateInput.seconds === 'number') {
-      d = new Date(dateInput.seconds * 1000);
+      d = new Date(dateInput.seconds * 1000 + (dateInput.nanoseconds || 0) / 1000000);
     } else if (dateInput instanceof Date) {
       d = dateInput;
     } else {
@@ -233,7 +244,6 @@ export class ManageSubscriptionComponent implements OnInit, OnDestroy {
 
   getStatusColor(status: string | undefined): string {
     if (!status) return 'medium';
-    // Ensure your SubscriptionDetails interface's status type includes all these, or cast/ignore type error
     const lowerStatus = status.toLowerCase();
     switch (lowerStatus) {
       case 'active':
@@ -245,7 +255,7 @@ export class ManageSubscriptionComponent implements OnInit, OnDestroy {
       case 'cancelled':
       case 'unpaid':
       case 'incomplete_expired':
-      case 'ended': // If 'ended' is a valid status for your SubscriptionDetails
+      case 'ended':
         return 'danger';
       default:
         return 'medium';
@@ -271,8 +281,7 @@ export class ManageSubscriptionComponent implements OnInit, OnDestroy {
     if (this.userSubscription) {
       this.userSubscription.unsubscribe();
     }
-    // if (this.actionSubscription) { // Not currently used for long-lived subscription
-    //   this.actionSubscription.unsubscribe();
-    // }
+    // No actionSubscription to unsubscribe from in this version
   }
 }
+

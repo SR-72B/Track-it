@@ -42,7 +42,7 @@
           <p *ngIf="orderData.order.customerPhone"><ion-icon name="call-outline" slot="start"></ion-icon> {{ orderData.order.customerPhone }}</p>
           <ion-item *ngIf="orderData.order.purchaseOrder" lines="none">
             <ion-label>PO Number:</ion-label>
-            <p>{{ orderData.order.purchaseOrder }}</p>
+            <ion-text slot="end">{{ orderData.order.purchaseOrder }}</ion-text>
           </ion-item>
         </ion-card-content>
       </ion-card>
@@ -53,7 +53,7 @@
           <ion-list lines="none">
             <ion-item *ngFor="let field of orderData.order.formData | keyvalue">
               <ion-label class="ion-text-wrap">
-                <h3>{{ field.key }}</h3>
+                <h3>{{ field.key | titlecase }}</h3>
                 <p>{{ field.value }}</p>
               </ion-label>
             </ion-item>
@@ -65,14 +65,14 @@
         <ion-card-header><ion-card-title>Attached Files</ion-card-title></ion-card-header>
         <ion-card-content>
           <ion-list lines="none">
-            <ion-item *ngFor="let fileUrl of orderData.order.fileUrls; let i = index" [href]="fileUrl" target="_blank" detail="true">
+            <ion-item *ngFor="let fileUrl of orderData.order.fileUrls; let i = index" [href]="fileUrl" target="_blank" detail="true" button>
               <ion-icon name="document-attach-outline" slot="start"></ion-icon>
               <ion-label>File {{ i + 1 }}</ion-label>
             </ion-item>
           </ion-list>
         </ion-card-content>
       </ion-card>
-    </ng-container><ng-container *ngIf="orderData && orderData.updates">
+    </ng-container> <ng-container *ngIf="orderData && orderData.updates">
       <ion-card *ngIf="orderData.updates.length > 0; else noUpdatesTemplate">
         <ion-card-header><ion-card-title>Order History & Updates</ion-card-title></ion-card-header>
         <ion-card-content>
@@ -88,28 +88,28 @@
         </ion-card-content>
       </ion-card>
       <ng-template #noUpdatesTemplate>
-        <ion-card *ngIf="orderData"> <ion-card-content><p class="ion-text-center">No updates for this order yet.</p></ion-card-content>
+        <ion-card *ngIf="orderData"> <ion-card-content><p class="ion-text-center ion-padding-vertical">No updates for this order yet.</p></ion-card-content>
         </ion-card>
       </ng-template>
-    </ng-container><ion-card *ngIf="orderData && orderData.order && orderData.order.status !== 'delivered' && orderData.order.status !== 'cancelled'">
+    </ng-container> <ion-card *ngIf="orderData && orderData.order && orderData.order.status !== 'delivered' && orderData.order.status !== 'cancelled'">
       <ion-card-header><ion-card-title>Update Order Status</ion-card-title></ion-card-header>
       <ion-card-content>
         <form [formGroup]="updateForm" (ngSubmit)="updateOrder()">
-          <ion-item>
+          <ion-item lines="full">
             <ion-label position="stacked">New Status</ion-label>
-            <ion-select formControlName="status" placeholder="Select Status">
+            <ion-select formControlName="status" placeholder="Select Status" interface="action-sheet">
               <ion-select-option *ngFor="let s of statuses" [value]="s.value">{{ s.label }}</ion-select-option>
             </ion-select>
           </ion-item>
-          <div *ngIf="updateForm.get('status')?.invalid && (updateForm.get('status')?.touched || updateForm.get('status')?.dirty)" class="error-message">
+          <div *ngIf="updateForm.get('status')?.invalid && (updateForm.get('status')?.touched || updateForm.get('status')?.dirty)" class="error-message ion-padding-start">
             <div *ngIf="updateForm.get('status')?.errors?.['required']">Status is required.</div>
           </div>
 
-          <ion-item>
+          <ion-item lines="full" class="ion-margin-top">
             <ion-label position="stacked">Message to Customer</ion-label>
-            <ion-textarea formControlName="message" placeholder="Enter update message..." rows="3"></ion-textarea>
+            <ion-textarea formControlName="message" placeholder="Enter update message (e.g., tracking number, reason for delay)" rows="3" autoGrow="true"></ion-textarea>
           </ion-item>
-           <div *ngIf="updateForm.get('message')?.invalid && (updateForm.get('message')?.touched || updateForm.get('message')?.dirty)" class="error-message">
+          <div *ngIf="updateForm.get('message')?.invalid && (updateForm.get('message')?.touched || updateForm.get('message')?.dirty)" class="error-message ion-padding-start">
             <div *ngIf="updateForm.get('message')?.errors?.['required']">Message is required.</div>
           </div>
 
@@ -133,9 +133,12 @@
         <span *ngIf="!isCancellingOrder">Cancel Order</span>
     </ion-button>
 
-  </ng-container><ng-template #loadingOrErrorTemplate>
+  </ng-container> <ng-template #loadingOrErrorTemplate>
+    <!-- This template is shown if orderData$ hasn't emitted a non-null value yet,
+         and isLoading is false and no specific errorMessage is set.
+         The blocks for isLoading and errorMessage above should handle most cases. -->
     <div *ngIf="!isLoading && !errorMessage" class="ion-text-center ion-padding">
-      <p>Order data is currently unavailable.</p>
+      <p>Order data is currently unavailable or could not be loaded.</p>
     </div>
   </ng-template>
 </ion-content>
