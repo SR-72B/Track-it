@@ -1,68 +1,206 @@
-<div *ngIf="orderForm && orderForm.allowFileUpload" class="file-upload-section ion-margin-top">
-      <ion-item-divider color="light">
-        <ion-label>File Upload</ion-label>
-      </ion-item-divider>
-      
-      <ion-item lines="none" *ngIf="orderForm.allowedFileTypes && orderForm.allowedFileTypes.length > 0">
-        <ion-icon name="document-attach-outline" slot="start" color="medium"></ion-icon>
-        <ion-label class="ion-text-wrap">
-          <small>Allowed types: {{ orderForm.allowedFileTypes.join(', ') }}</small>
-          <small *ngIf="orderForm.maxFilesAllowed"> (Max {{ orderForm.maxFilesAllowed }} {{ orderForm.maxFilesAllowed === 1 ? 'file' : 'files' }})</small>
-        </ion-label>
-      </ion-item>
-      
-      <div class="file-input-container ion-padding-horizontal ion-padding-bottom">
-        <ion-button expand="block" color="medium" (click)="fileInput.click()" type="button">
-          <ion-icon name="cloud-upload-outline" slot="start"></ion-icon>
-          Select Files
-        </ion-button>
-        <input 
-          #fileInput 
-          type="file" 
-          style="display: none;" 
-          (change)="onFileSelected($event)" 
-          [accept]="orderForm.allowedFileTypes?.join(',')"
-          multiple>
-        </div>
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+      <ion-back-button [defaultHref]="orderForm ? '/customer/forms' : '/customer/dashboard'"></ion-back-button>
+    </ion-buttons>
+    <ion-title>{{ orderForm?.title || 'Place Order' }}</ion-title>
+  </ion-toolbar>
+</ion-header>
 
-      <ion-list *ngIf="selectedFiles.length > 0" lines="none" class="selected-files-list">
-        <ion-item-divider color="light" class="ion-no-padding">
-            <ion-label class="ion-padding-start">Selected Files ({{ selectedFiles.length }})</ion-label>
-        </ion-item-divider>
-        <ion-item *ngFor="let file of selectedFiles; let i = index" class="selected-file-item">
-          <ion-icon name="document-text-outline" slot="start" color="primary"></ion-icon>
-          <ion-label class="ion-text-wrap">
-            <h3>{{ file.name }}</h3>
-            <p><small>{{ file.size | number }} bytes ({{ file.type || 'unknown type' }})</small></p>
-          </ion-label>
-          <ion-button slot="end" fill="clear" color="danger" (click)="removeFile(i)" type="button" aria-label="Remove file">
-            <ion-icon slot="icon-only" name="close-circle-outline"></ion-icon>
-          </ion-button>
-        </ion-item>
-      </ion-list>
-    </div>
+<ion-content class="ion-padding customer-order-form-content">
+  <div *ngIf="isLoading && !orderForm" class="loading-container ion-text-center">
+    <ion-spinner name="crescent" color="primary"></ion-spinner>
+    <p>Loading form...</p>
+  </div>
 
-    <div *ngIf="orderForm && orderForm.cancellationPolicy" class="cancellation-policy ion-margin-top">
-      <ion-item-divider color="light">
-        <ion-label>Cancellation Policy</ion-label>
-      </ion-item-divider>
-      <ion-text class="ion-padding-horizontal ion-padding-bottom policy-text">
-        <p><small>{{ orderForm.cancellationPolicy }}</small></p>
-      </ion-text>
-    </div>
-     <div *ngIf="orderForm && orderForm.submissionInstructions" class="submission-instructions ion-margin-top">
-      <ion-item-divider color="light">
-        <ion-label>Important Notes</ion-label>
-      </ion-item-divider>
-      <ion-text class="ion-padding-horizontal ion-padding-bottom policy-text">
-        <p><small>{{ orderForm.submissionInstructions }}</small></p>
-      </ion-text>
-    </div>
-
-    <ion-button expand="block" type="submit" [disabled]="dynamicForm.invalid || isSubmitting" class="ion-margin-top submit-order-button" size="large">
-      <ion-spinner *ngIf="isSubmitting" name="dots"></ion-spinner>
-      <span *ngIf="!isSubmitting">Submit Order</span>
+  <div *ngIf="errorMessage && !isLoading" class="error-container ion-text-center">
+    <ion-icon name="alert-circle-outline" color="danger" class="error-icon"></ion-icon>
+    <p>{{ errorMessage }}</p>
+    <ion-button (click)="loadOrderFormDefinition()" fill="outline" color="primary">
+      <ion-icon name="refresh-outline" slot="start"></ion-icon>
+      Try Again
     </ion-button>
-  </form>
-</ng-container>
+  </div>
+
+  <ng-container *ngIf="!isLoading && !errorMessage && orderForm">
+    <div class="form-header ion-text-center ion-margin-bottom" *ngIf="orderForm.title">
+      <h1>{{ orderForm.title }}</h1>
+      <p *ngIf="orderForm.description">{{ orderForm.description }}</p>
+    </div>
+
+    <form [formGroup]="dynamicForm" (ngSubmit)="submitOrder()">
+
+      <div *ngIf="orderForm.fields && orderForm.fields.length > 0" class="dynamic-fields-section">
+        <ion-list lines="none">
+          <ng-container *ngFor="let fieldDef of orderForm.fields; let i = index">
+            <ion-item class="dynamic-field-item">
+              <ng-container [ngSwitch]="fieldDef.type">
+                <ion-input *ngSwitchCase="'text'"
+                  [formControlName]="fieldDef.id || fieldDef.label.replace(/\s+/g, '-').toLowerCase()"
+                  type="text"
+                  [label]="fieldDef.label + (fieldDef.required ? ' *' : '')"
+                  labelPlacement="floating"
+                  [placeholder]="fieldDef.placeholder || ''">
+                </ion-input>
+
+                <ion-input *ngSwitchCase="'email'"
+                  [formControlName]="fieldDef.id || fieldDef.label.replace(/\s+/g, '-').toLowerCase()"
+                  type="email"
+                  [label]="fieldDef.label + (fieldDef.required ? ' *' : '')"
+                  labelPlacement="floating"
+                  [placeholder]="fieldDef.placeholder || ''">
+                </ion-input>
+
+                <ion-input *ngSwitchCase="'number'"
+                  [formControlName]="fieldDef.id || fieldDef.label.replace(/\s+/g, '-').toLowerCase()"
+                  type="number"
+                  [label]="fieldDef.label + (fieldDef.required ? ' *' : '')"
+                  labelPlacement="floating"
+                  [placeholder]="fieldDef.placeholder || ''">
+                </ion-input>
+
+                <ion-input *ngSwitchCase="'phone'"
+                  [formControlName]="fieldDef.id || fieldDef.label.replace(/\s+/g, '-').toLowerCase()"
+                  type="tel"
+                  [label]="fieldDef.label + (fieldDef.required ? ' *' : '')"
+                  labelPlacement="floating"
+                  [placeholder]="fieldDef.placeholder || ''">
+                </ion-input>
+
+                <ion-input *ngSwitchCase="'date'"
+                  [formControlName]="fieldDef.id || fieldDef.label.replace(/\s+/g, '-').toLowerCase()"
+                  type="date"
+                  [label]="fieldDef.label + (fieldDef.required ? ' *' : '')"
+                  labelPlacement="floating">
+                </ion-input>
+
+                <ion-textarea *ngSwitchCase="'textarea'"
+                  [formControlName]="fieldDef.id || fieldDef.label.replace(/\s+/g, '-').toLowerCase()"
+                  [label]="fieldDef.label + (fieldDef.required ? ' *' : '')"
+                  labelPlacement="floating"
+                  [placeholder]="fieldDef.placeholder || ''"
+                  rows="4"
+                  autoGrow="true">
+                </ion-textarea>
+
+                <ion-radio-group *ngSwitchCase="'radio'" class="ion-padding-top ion-padding-bottom"
+                  [formControlName]="fieldDef.id || fieldDef.label.replace(/\s+/g, '-').toLowerCase()">
+                  <ion-list-header>
+                    <ion-label>{{ fieldDef.label }} <span *ngIf="fieldDef.required" class="required-asterisk">*</span></ion-label>
+                  </ion-list-header>
+                  <ion-item *ngFor="let option of fieldDef.options">
+                    <ion-radio [value]="option" slot="start"></ion-radio>
+                    <ion-label>{{option}}</ion-label>
+                  </ion-item>
+                </ion-radio-group>
+
+                <div *ngSwitchCase="'checkbox'" class="ion-padding-top ion-padding-bottom">
+                    <ion-list-header>
+                        <ion-label>{{ fieldDef.label }} <span *ngIf="fieldDef.required" class="required-asterisk">*</span></ion-label>
+                    </ion-list-header>
+                    <ion-item *ngFor="let option of fieldDef.options">
+                        <ion-checkbox slot="start" [value]="option"></ion-checkbox>
+                        <ion-label>{{option}}</ion-label>
+                    </ion-item>
+                </div>
+
+
+                <div *ngSwitchDefault>
+                    <ion-label position="stacked">{{ fieldDef.label }} <span *ngIf="fieldDef.required" class="required-asterisk">*</span></ion-label>
+                    <ion-input
+                        [type]="fieldDef.type === 'email' ? 'email' : fieldDef.type === 'number' ? 'number' : 'text'"
+                        [formControlName]="fieldDef.id || fieldDef.label.replace(/\s+/g, '-').toLowerCase()"
+                        [placeholder]="fieldDef.placeholder || ''">
+                    </ion-input>
+                </div>
+              </ng-container>
+            </ion-item> <div *ngIf="dynamicForm.get(fieldDef.id || fieldDef.label.replace(/\s+/g, '-').toLowerCase())?.invalid && 
+                        (dynamicForm.get(fieldDef.id || fieldDef.label.replace(/\s+/g, '-').toLowerCase())?.touched || 
+                         dynamicForm.get(fieldDef.id || fieldDef.label.replace(/\s+/g, '-').toLowerCase())?.dirty)" 
+                 class="error-message ion-padding-start">
+              <small *ngIf="dynamicForm.get(fieldDef.id || fieldDef.label.replace(/\s+/g, '-').toLowerCase())?.errors?.['required']">This field is required.</small>
+              <small *ngIf="dynamicForm.get(fieldDef.id || fieldDef.label.replace(/\s+/g, '-').toLowerCase())?.errors?.['email']">Please enter a valid email.</small>
+              </div>
+          </ng-container> </div> <div *ngIf="orderForm.fields && orderForm.fields.length === 0" class="ion-text-center ion-padding">
+        <p>This form has no fields defined yet. Please contact the retailer.</p>
+      </div>
+
+      <ion-item lines="full" class="ion-margin-top">
+        <ion-label position="floating">Purchase Order # (Optional)</ion-label>
+        <ion-input formControlName="purchaseOrder" type="text"></ion-input>
+      </ion-item>
+
+      <div *ngIf="orderForm.allowFileUpload" class="file-upload-section ion-margin-top">
+        <ion-item-divider color="light">
+          <ion-label>File Upload</ion-label>
+        </ion-item-divider>
+        <ion-item lines="none" *ngIf="orderForm.allowedFileTypes && orderForm.allowedFileTypes.length > 0">
+          <ion-icon name="document-attach-outline" slot="start" color="medium"></ion-icon>
+          <ion-label class="ion-text-wrap">
+            <small>Allowed types: {{ orderForm.allowedFileTypes.join(', ') }}</small>
+            <small *ngIf="orderForm.maxFilesAllowed"> (Max {{ orderForm.maxFilesAllowed }} {{ orderForm.maxFilesAllowed === 1 ? 'file' : 'files' }})</small>
+          </ion-label>
+        </ion-item>
+        <div class="file-input-container ion-padding-horizontal ion-padding-bottom">
+          <ion-button expand="block" color="medium" (click)="fileInput.click()" type="button">
+            <ion-icon name="cloud-upload-outline" slot="start"></ion-icon>
+            Select Files
+          </ion-button>
+          <input
+            #fileInput
+            type="file"
+            style="display: none;"
+            (change)="onFileSelected($event)"
+            [accept]="orderForm.allowedFileTypes?.join(',')"
+            multiple>
+        </div>
+        <ion-list *ngIf="selectedFiles.length > 0" lines="none" class="selected-files-list">
+          <ion-item-divider color="light" class="ion-no-padding">
+              <ion-label class="ion-padding-start">Selected Files ({{ selectedFiles.length }})</ion-label>
+          </ion-item-divider>
+          <ion-item *ngFor="let file of selectedFiles; let i = index" class="selected-file-item">
+            <ion-icon name="document-text-outline" slot="start" color="primary"></ion-icon>
+            <ion-label class="ion-text-wrap">
+              <h3>{{ file.name }}</h3>
+              <p><small>{{ file.size | number }} bytes ({{ file.type || 'unknown type' }})</small></p>
+            </ion-label>
+            <ion-button slot="end" fill="clear" color="danger" (click)="removeFile(i)" type="button" aria-label="Remove file">
+              <ion-icon slot="icon-only" name="close-circle-outline"></ion-icon>
+            </ion-button>
+          </ion-item>
+        </ion-list>
+      </div>
+
+      <div *ngIf="orderForm.cancellationPolicy" class="cancellation-policy ion-margin-top">
+        <ion-item-divider color="light">
+          <ion-label>Cancellation Policy</ion-label>
+        </ion-item-divider>
+        <ion-text class="ion-padding-horizontal ion-padding-bottom policy-text">
+          <p><small>{{ orderForm.cancellationPolicy }}</small></p>
+        </ion-text>
+      </div>
+      <div *ngIf="orderForm.submissionInstructions" class="submission-instructions ion-margin-top">
+        <ion-item-divider color="light">
+          <ion-label>Important Notes</ion-label>
+        </ion-item-divider>
+        <ion-text class="ion-padding-horizontal ion-padding-bottom policy-text">
+          <p><small>{{ orderForm.submissionInstructions }}</small></p>
+        </ion-text>
+      </div>
+
+      <ion-button expand="block" type="submit" [disabled]="dynamicForm.invalid || isSubmitting" class="ion-margin-top submit-order-button" size="large">
+        <ion-spinner *ngIf="isSubmitting" name="dots"></ion-spinner>
+        <span *ngIf="!isSubmitting">Submit Order</span>
+      </ion-button>
+    </form> </ng-container> <ng-template #loadingOrErrorTemplate>
+    <div *ngIf="!isLoading && !errorMessage" class="ion-text-center ion-padding">
+        <ion-icon name="document-text-outline" class="empty-state-icon" color="medium"></ion-icon>
+        <h4>Form Unavailable</h4>
+        <p>The order form could not be loaded at this time.</p>
+    </div>
+  </ng-template>
+
 </ion-content>
+
+
