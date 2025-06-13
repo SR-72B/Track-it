@@ -38,7 +38,7 @@
           <ion-card-title>
             <ion-badge [color]="getStatusColor(orderDataResult.order.status)">
               {{ orderDataResult.order.status | titlecase }}
-            </ion-badge> <!-- THIS TAG IS NOW CORRECTLY CLOSED -->
+            </ion-badge>
           </ion-card-title>
           <p class="placed-on-date">Placed on: {{ formatDate(orderDataResult.order.createdAt) }}</p>
         </ion-card-header>
@@ -53,7 +53,7 @@
           <ion-list lines="none">
             <ion-item *ngFor="let field of orderDataResult.order.formData | keyvalue">
               <ion-label class="ion-text-wrap">
-                <h3>{{ (field.key as string) | titlecase }}</h3>
+                <h3>{{ field.key | titlecase }}</h3>
                 <p>{{ field.value }}</p>
               </ion-label>
             </ion-item>
@@ -85,14 +85,18 @@
         <ion-card-content>
           <ion-list lines="full" class="timeline-list">
             <ion-item *ngFor="let update of orderDataResult.updates" class="order-update-item">
-              <ion-icon [name]="
-                update.status === 'pending' ? 'ellipse-outline' :
-                update.status === 'processing' ? 'sync-circle-outline' :
-                update.status === 'shipped' ? 'airplane-outline' :
-                update.status === 'delivered' ? 'checkmark-done-circle-outline' :
-                update.status === 'cancelled' ? 'close-circle-outline' :
-                'information-circle-outline'
-              " [color]="getStatusColor(update.status)" slot="start"></ion-icon>
+              <ion-icon
+                [name]="
+                  update.status === 'pending' ? 'ellipse-outline' :
+                  update.status === 'processing' ? 'sync-circle-outline' :
+                  update.status === 'shipped' ? 'airplane-outline' :
+                  update.status === 'delivered' ? 'checkmark-done-circle-outline' :
+                  update.status === 'cancelled' ? 'close-circle-outline' :
+                  'information-circle-outline'
+                "
+                [color]="getStatusColor(update.status)"
+                slot="start"
+              ></ion-icon>
               <ion-label class="ion-text-wrap">
                 <h2>{{ update.status | titlecase }}</h2>
                 <p>{{ update.message }}</p>
@@ -117,7 +121,8 @@
           color="danger"
           fill="outline"
           (click)="cancelOrder(orderDataResult.order)"
-          [disabled]="!canCancel(orderDataResult.order) || isCancelling">
+          [disabled]="!canCancel(orderDataResult.order) || isCancelling"
+        >
           <ion-spinner *ngIf="isCancelling" name="dots"></ion-spinner>
           <span *ngIf="!isCancelling">Cancel Order</span>
         </ion-button>
@@ -129,13 +134,12 @@
     </ng-container> <!-- This closes *ngIf="orderDataResult && orderDataResult.order" -->
 
     <ng-template #noSpecificOrderData>
-        <div *ngIf="!isLoading && !errorMessage" class="ion-text-center ion-padding">
-            <ion-icon name="document-outline" class="empty-state-icon" color="medium"></ion-icon>
-            <h4>Order Not Found</h4>
-            <p>The requested order details could not be found.</p>
-        </div>
+      <div *ngIf="!isLoading && !errorMessage" class="ion-text-center ion-padding">
+        <ion-icon name="document-outline" class="empty-state-icon" color="medium"></ion-icon>
+        <h4>Order Not Found</h4>
+        <p>The requested order details could not be found.</p>
+      </div>
     </ng-template>
-    
   </ng-container> <!-- This closes *ngIf="orderData$ | async as orderDataResult" -->
 
   <ng-template #noDataState>

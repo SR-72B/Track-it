@@ -1,135 +1,63 @@
-<ion-header>
-  <ion-toolbar color="primary">
-    <ion-buttons slot="start">
-      <ion-menu-button></ion-menu-button>
-      <ion-back-button [defaultHref]="orderForm ? '/customer/forms' : '/customer/dashboard'"></ion-back-button>
-    </ion-buttons>
-    <ion-title>{{ orderForm?.title || 'Place Order' }}</ion-title>
-  </ion-toolbar>
-</ion-header>
+<div *ngIf="orderForm.fields && orderForm.fields.length > 0" class="dynamic-fields-section">
+  <ion-list lines="none" [formArrayName]="'fields'">
+    <ion-card *ngFor="let fieldCtrl of fields.controls; let i = index" [formGroupName]="i.toString()" class="dynamic-field-card">
+      <ion-item class="dynamic-field-item">
+        <ng-container [ngSwitch]="fieldCtrl.get('type')?.value">
 
-<ion-content class="ion-padding customer-order-form-content">
-  <div *ngIf="isLoading && !orderForm" class="loading-container ion-text-center">
-    <ion-spinner name="crescent" color="primary"></ion-spinner>
-    <p>Loading form...</p>
-  </div>
+          <!-- Text Inputs -->
+          <ion-input *ngSwitchCase="'text'" [formControlName]="fieldCtrl.get('id')?.value" type="text"
+            [label]="fieldCtrl.get('label')?.value + (fieldCtrl.get('required')?.value ? ' *' : '')"
+            labelPlacement="floating"
+            [placeholder]="fieldCtrl.get('placeholder')?.value || ''"></ion-input>
 
-  <div *ngIf="errorMessage && !isLoading" class="error-container ion-text-center">
-    <ion-icon name="alert-circle-outline" color="danger" class="error-icon"></ion-icon>
-    <p>{{ errorMessage }}</p>
-    <ion-button (click)="loadOrderFormDefinition()" fill="outline" color="primary">
-      <ion-icon name="refresh-outline" slot="start"></ion-icon>
-      Try Again
-    </ion-button>
-  </div>
+          <ion-input *ngSwitchCase="'email'" [formControlName]="fieldCtrl.get('id')?.value" type="email"
+            [label]="fieldCtrl.get('label')?.value + (fieldCtrl.get('required')?.value ? ' *' : '')"
+            labelPlacement="floating"
+            [placeholder]="fieldCtrl.get('placeholder')?.value || ''"></ion-input>
 
-  <ng-container *ngIf="!isLoading && !errorMessage && orderForm">
-    <div class="form-header ion-text-center ion-margin-bottom" *ngIf="orderForm.title">
-      <h1>{{ orderForm.title }}</h1>
-      <p *ngIf="orderForm.description">{{ orderForm.description }}</p>
-    </div>
+          <ion-input *ngSwitchCase="'number'" [formControlName]="fieldCtrl.get('id')?.value" type="number"
+            [label]="fieldCtrl.get('label')?.value + (fieldCtrl.get('required')?.value ? ' *' : '')"
+            labelPlacement="floating"
+            [placeholder]="fieldCtrl.get('placeholder')?.value || ''"></ion-input>
 
-    <form [formGroup]="dynamicForm" (ngSubmit)="submitOrder()">
+          <ion-input *ngSwitchCase="'phone'" [formControlName]="fieldCtrl.get('id')?.value" type="tel"
+            [label]="fieldCtrl.get('label')?.value + (fieldCtrl.get('required')?.value ? ' *' : '')"
+            labelPlacement="floating"
+            [placeholder]="fieldCtrl.get('placeholder')?.value || ''"></ion-input>
 
-      <!-- Dynamically Rendered Form Fields -->
-      <div *ngIf="orderForm.fields && orderForm.fields.length > 0" class="dynamic-fields-section">
-        <ion-list lines="none" [formArrayName]="'fields'">
-          <ion-card *ngFor="let fieldCtrl of fields.controls; let i = index" [formGroupName]="i.toString()" class="dynamic-field-card">
-            <ion-item class="dynamic-field-item">
-              <ng-container [ngSwitch]="fieldCtrl.get('type')?.value">
-                <!-- Text Inputs -->
-                <ion-input *ngSwitchCase="'text'" [formControlName]="fieldCtrl.get('id')?.value" type="text" [label]="fieldCtrl.get('label')?.value + (fieldCtrl.get('required')?.value ? ' *' : '')" labelPlacement="floating" [placeholder]="fieldCtrl.get('placeholder')?.value || ''"></ion-input>
-                <ion-input *ngSwitchCase="'email'" [formControlName]="fieldCtrl.get('id')?.value" type="email" [label]="fieldCtrl.get('label')?.value + (fieldCtrl.get('required')?.value ? ' *' : '')" labelPlacement="floating" [placeholder]="fieldCtrl.get('placeholder')?.value || ''"></ion-input>
-                <ion-input *ngSwitchCase="'number'" [formControlName]="fieldCtrl.get('id')?.value" type="number" [label]="fieldCtrl.get('label')?.value + (fieldCtrl.get('required')?.value ? ' *' : '')" labelPlacement="floating" [placeholder]="fieldCtrl.get('placeholder')?.value || ''"></ion-input>
-                <ion-input *ngSwitchCase="'phone'" [formControlName]="fieldCtrl.get('id')?.value" type="tel" [label]="fieldCtrl.get('label')?.value + (fieldCtrl.get('required')?.value ? ' *' : '')" labelPlacement="floating" [placeholder]="fieldCtrl.get('placeholder')?.value || ''"></ion-input>
-                <ion-input *ngSwitchCase="'date'" [formControlName]="fieldCtrl.get('id')?.value" type="date" [label]="fieldCtrl.get('label')?.value + (fieldCtrl.get('required')?.value ? ' *' : '')" labelPlacement="floating"></ion-input>
-                <ion-textarea *ngSwitchCase="'textarea'" [formControlName]="fieldCtrl.get('id')?.value" [label]="fieldCtrl.get('label')?.value + (fieldCtrl.get('required')?.value ? ' *' : '')" labelPlacement="floating" [placeholder]="fieldCtrl.get('placeholder')?.value || ''" rows="4" autoGrow="true"></ion-textarea>
-                
-                <!-- Radio Group -->
-                <ion-list *ngSwitchCase="'radio'" class="ion-no-padding dynamic-field-options-list">
-                  <ion-radio-group [formControlName]="fieldCtrl.get('id')?.value">
-                    <ion-list-header><ion-label>{{ fieldCtrl.get('label')?.value }} <span *ngIf="fieldCtrl.get('required')?.value" class="required-asterisk">*</span></ion-label></ion-list-header>
-                    <ion-item *ngFor="let option of (fieldCtrl.get('options') as FormArray)?.controls">
-                      <ion-radio [value]="option.value" slot="start"></ion-radio>
-                      <ion-label>{{option.value}}</ion-label>
-                    </ion-item>
-                  </ion-radio-group>
-                </ion-list>
-              </ng-container>
-            </ion-item>
-            <!-- Validation Messages -->
-            <div *ngIf="fieldCtrl.get('id')?.invalid && (fieldCtrl.get('id')?.touched || fieldCtrl.get('id')?.dirty)" class="error-message ion-padding-start">
-              <small *ngIf="fieldCtrl.get('id')?.errors?.['required']">This field is required.</small>
-            </div>
-          </ion-card>
-        </div>
-      </div>
-      <div *ngIf="orderForm.fields && orderForm.fields.length === 0" class="ion-text-center ion-padding">
-        <p>This form has no fields defined yet. Please contact the retailer.</p>
-      </div>
+          <ion-input *ngSwitchCase="'date'" [formControlName]="fieldCtrl.get('id')?.value" type="date"
+            [label]="fieldCtrl.get('label')?.value + (fieldCtrl.get('required')?.value ? ' *' : '')"
+            labelPlacement="floating"></ion-input>
 
-      <!-- Purchase Order (Optional) -->
-      <ion-item lines="full" class="ion-margin-top">
-        <ion-label position="floating">Purchase Order # (Optional)</ion-label>
-        <ion-input formControlName="purchaseOrder" type="text"></ion-input>
+          <ion-textarea *ngSwitchCase="'textarea'" [formControlName]="fieldCtrl.get('id')?.value"
+            [label]="fieldCtrl.get('label')?.value + (fieldCtrl.get('required')?.value ? ' *' : '')"
+            labelPlacement="floating" [placeholder]="fieldCtrl.get('placeholder')?.value || ''" rows="4"
+            autoGrow="true"></ion-textarea>
+
+          <!-- Radio Group -->
+          <ion-list *ngSwitchCase="'radio'" class="ion-no-padding dynamic-field-options-list">
+            <ion-radio-group [formControlName]="fieldCtrl.get('id')?.value">
+              <ion-list-header>
+                <ion-label>
+                  {{ fieldCtrl.get('label')?.value }}
+                  <span *ngIf="fieldCtrl.get('required')?.value" class="required-asterisk">*</span>
+                </ion-label>
+              </ion-list-header>
+              <ion-item *ngFor="let option of fieldCtrl.get('options')?.value">
+                <ion-radio [value]="option" slot="start"></ion-radio>
+                <ion-label>{{ option }}</ion-label>
+              </ion-item>
+            </ion-radio-group>
+          </ion-list>
+
+        </ng-container>
       </ion-item>
 
-      <!-- File Upload Section -->
-      <div *ngIf="orderForm.allowFileUpload" class="file-upload-section ion-margin-top">
-        <ion-item-divider color="light"><ion-label>File Upload</ion-label></ion-item-divider>
-        <ion-item lines="none" *ngIf="orderForm.allowedFileTypes && orderForm.allowedFileTypes.length > 0">
-          <ion-icon name="document-attach-outline" slot="start" color="medium"></ion-icon>
-          <ion-label class="ion-text-wrap">
-            <small>Allowed types: {{ orderForm.allowedFileTypes.join(', ') }}</small>
-            <small *ngIf="orderForm.maxFilesAllowed"> (Max {{ orderForm.maxFilesAllowed }} {{ orderForm.maxFilesAllowed === 1 ? 'file' : 'files' }})</small>
-          </ion-label>
-        </ion-item>
-        <div class="file-input-container ion-padding-horizontal ion-padding-bottom">
-          <ion-button expand="block" color="medium" (click)="fileInput.click()" type="button">
-            <ion-icon name="cloud-upload-outline" slot="start"></ion-icon>
-            Select Files
-          </ion-button>
-          <input #fileInput type="file" style="display: none;" (change)="onFileSelected($event)" [accept]="orderForm.allowedFileTypes?.join(',')" multiple>
-        </div>
-        <ion-list *ngIf="selectedFiles.length > 0" lines="none" class="selected-files-list">
-          <ion-item-divider color="light" class="ion-no-padding">
-            <ion-label class="ion-padding-start">Selected Files ({{ selectedFiles.length }})</ion-label>
-          </ion-item-divider>
-          <ion-item *ngFor="let file of selectedFiles; let i = index" class="selected-file-item">
-            <ion-icon name="document-text-outline" slot="start" color="primary"></ion-icon>
-            <ion-label class="ion-text-wrap">
-              <h3>{{ file.name }}</h3>
-              <p><small>{{ file.size | number }} bytes ({{ file.type || 'unknown type' }})</small></p>
-            </ion-label>
-            <ion-button slot="end" fill="clear" color="danger" (click)="removeFile(i)" type="button" aria-label="Remove file">
-              <ion-icon slot="icon-only" name="close-circle-outline"></ion-icon>
-            </ion-button>
-          </ion-item>
-        </ion-list>
+      <!-- Validation Messages -->
+      <div *ngIf="fieldCtrl.get('id')?.invalid && (fieldCtrl.get('id')?.touched || fieldCtrl.get('id')?.dirty)"
+        class="error-message ion-padding-start">
+        <small *ngIf="fieldCtrl.get('id')?.errors?.['required']">This field is required.</small>
       </div>
-
-      <!-- Cancellation Policy and Submission Instructions -->
-      <div *ngIf="orderForm.cancellationPolicy" class="cancellation-policy ion-margin-top">
-        <ion-item-divider color="light"><ion-label>Cancellation Policy</ion-label></ion-item-divider>
-        <ion-text class="ion-padding-horizontal ion-padding-bottom policy-text"><p><small>{{ orderForm.cancellationPolicy }}</small></p></ion-text>
-      </div>
-      <div *ngIf="orderForm.submissionInstructions" class="submission-instructions ion-margin-top">
-        <ion-item-divider color="light"><ion-label>Important Notes</ion-label></ion-item-divider>
-        <ion-text class="ion-padding-horizontal ion-padding-bottom policy-text"><p><small>{{ orderForm.submissionInstructions }}</small></p></ion-text>
-      </div>
-
-      <ion-button expand="block" type="submit" [disabled]="dynamicForm.invalid || isSubmitting" class="ion-margin-top submit-order-button" size="large">
-        <ion-spinner *ngIf="isSubmitting" name="dots"></ion-spinner>
-        <span *ngIf="!isSubmitting">Submit Order</span>
-      </ion-button>
-    </form>
-  </ng-container>
-
-  <ng-template #loadingOrErrorTemplate>
-    <div *ngIf="!isLoading && !errorMessage" class="ion-text-center ion-padding">
-      <ion-icon name="document-text-outline" class="empty-state-icon" color="medium"></ion-icon>
-      <h4>Form Unavailable</h4>
-      <p>The order form could not be loaded at this time.</p>
-    </div>
-  </ng-template>
-</ion-content>
+    </ion-card>
+  </ion-list>
+</div>
