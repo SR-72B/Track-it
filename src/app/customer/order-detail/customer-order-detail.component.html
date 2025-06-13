@@ -92,14 +92,7 @@
                 update.status === 'delivered' ? 'checkmark-done-circle-outline' :
                 update.status === 'cancelled' ? 'close-circle-outline' :
                 'information-circle-outline'
-              " [color]="
-                update.status === 'pending' ? 'warning' :
-                update.status === 'processing' ? 'primary' :
-                update.status === 'shipped' ? 'tertiary' :
-                update.status === 'delivered' ? 'success' :
-                update.status === 'cancelled' ? 'danger' :
-                'medium'
-              " slot="start"></ion-icon>
+              " [color]="getStatusColor(update.status)" slot="start"></ion-icon>
               <ion-label class="ion-text-wrap">
                 <h2>{{ update.status | titlecase }}</h2>
                 <p>{{ update.message }}</p>
