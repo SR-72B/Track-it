@@ -28,7 +28,7 @@
   </div>
 
   <ng-container *ngIf="orderData$ | async as orderDataResult; else noDataState">
-    <!-- This container now properly wraps ALL content that depends on orderDataResult -->
+    <!-- Main content container, only renders if orderData$ has emitted a non-null value -->
     <ng-container *ngIf="orderDataResult && orderDataResult.order; else noSpecificOrderData">
 
       <!-- Order Summary Card -->
@@ -38,7 +38,7 @@
           <ion-card-title>
             <ion-badge [color]="getStatusColor(orderDataResult.order.status)">
               {{ orderDataResult.order.status | titlecase }}
-            </ion-badge> <!-- CORRECTLY CLOSED TAG -->
+            </ion-badge> <!-- THIS TAG IS NOW CORRECTLY CLOSED -->
           </ion-card-title>
           <p class="placed-on-date">Placed on: {{ formatDate(orderDataResult.order.createdAt) }}</p>
         </ion-card-header>
