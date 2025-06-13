@@ -1,5 +1,5 @@
 // src/app/customer/place-order/place-order.component.ts
-// or src/app/customer/order-form/customer-order-form.component.ts
+
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, FormControl, Validators, ReactiveFormsModule } from '@angular/forms';
