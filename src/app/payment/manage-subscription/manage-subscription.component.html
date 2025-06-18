@@ -1,0 +1,167 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+      <ion-back-button defaultHref="/retailer/dashboard"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Manage Subscription</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding manage-subscription-content">
+  <ion-refresher slot="fixed" (ionRefresh)="doRefresh($event)">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <div *ngIf="isLoading && !(subscription$ | async)" class="loading-container ion-text-center">
+    <ion-spinner name="crescent" color="primary"></ion-spinner>
+    <p>Loading subscription details...</p>
+  </div>
+
+  <div *ngIf="errorMessage && !isLoading" class="error-container ion-text-center">
+    <ion-icon name="alert-circle-outline" color="danger" class="error-icon"></ion-icon>
+    <p>{{ errorMessage }}</p>
+    <ion-button (click)="loadSubscriptionDetails()" expand="block" fill="outline" color="primary">
+      <ion-icon name="refresh-outline" slot="start"></ion-icon>
+      Try Again
+    </ion-button>
+  </div>
+
+  <ng-container *ngIf="!isLoading && !errorMessage">
+    <ng-container *ngIf="subscription$ | async as sub; else noSubscriptionState">
+      <ion-card class="subscription-card" mode="md">
+        <ion-card-header>
+          <ion-card-title color="primary">Current Plan: {{ sub.planName || 'N/A' }}</ion-card-title>
+          <ion-card-subtitle>
+            Status:
+            <ion-text [color]="getStatusColor(sub.status)" class="status-text">
+              <strong>{{ sub.status | titlecase }}</strong>
+            </ion-text>
+          </ion-card-subtitle>
+        </ion-card-header>
+        <ion-card-content>
+          <ion-list lines="none" class="details-list">
+            <ion-item>
+              <ion-icon name="pricetag-outline" slot="start" color="medium" aria-hidden="true"></ion-icon>
+              <ion-label class="ion-text-wrap">
+                <h3>Price</h3>
+                <p>{{ sub.price | currency:sub.currency:'symbol':'1.2-2' }} / {{ sub.interval }}</p>
+              </ion-label>
+            </ion-item>
+            <ion-item *ngIf="sub.startDate">
+              <ion-icon name="calendar-outline" slot="start" color="medium" aria-hidden="true"></ion-icon>
+              <ion-label class="ion-text-wrap">
+                <h3>Started On</h3>
+                <p>{{ formatDate(sub.startDate) }}</p>
+              </ion-label>
+            </ion-item>
+            <ion-item *ngIf="sub.endDate && (sub.status === 'cancelled' || sub.status === 'ended')">
+              <ion-icon name="hourglass-outline" slot="start" color="medium" aria-hidden="true"></ion-icon>
+              <ion-label class="ion-text-wrap">
+                <h3>Access Until</h3>
+                <p>{{ formatDate(sub.endDate) }}</p>
+              </ion-label>
+            </ion-item>
+            <ion-item *ngIf="sub.nextBillingDate && (sub.status === 'active' || sub.status === 'trialing')">
+              <ion-icon name="refresh-circle-outline" slot="start" color="medium" aria-hidden="true"></ion-icon>
+              <ion-label class="ion-text-wrap">
+                <h3>Next Billing Date</h3>
+                <p>{{ formatDate(sub.nextBillingDate) }}</p>
+              </ion-label>
+            </ion-item>
+            <ion-item *ngIf="sub.trialEndDate && sub.status === 'trialing'">
+              <ion-icon name="alarm-outline" slot="start" color="warning" aria-hidden="true"></ion-icon>
+              <ion-label class="ion-text-wrap">
+                <h3>Trial Ends</h3>
+                <p>{{ formatDate(sub.trialEndDate) }}</p>
+              </ion-label>
+            </ion-item>
+          </ion-list>
+
+          <div class="actions-grid ion-margin-top">
+            <ion-button expand="block" fill="outline" (click)="viewInvoices()" [disabled]="isProcessingAction">
+              <ion-icon name="document-text-outline" slot="start" aria-hidden="true"></ion-icon>
+              View Invoices
+            </ion-button>
+            <ion-button
+              expand="block"
+              color="danger"
+              fill="outline"
+              (click)="cancelSubscription(sub)"
+              *ngIf="sub.status === 'active' || sub.status === 'trialing' || sub.status === 'past_due'"
+              [disabled]="isProcessingAction">
+              <ion-spinner *ngIf="isProcessingAction && currentActionPlanId === 'cancel'" name="dots"></ion-spinner>
+              <ion-icon *ngIf="!(isProcessingAction && currentActionPlanId === 'cancel')" name="close-circle-outline" slot="start" aria-hidden="true"></ion-icon>
+              <span *ngIf="!(isProcessingAction && currentActionPlanId === 'cancel')">Cancel Subscription</span>
+            </ion-button>
+          </div>
+        </ion-card-content>
+      </ion-card>
+
+      <div class="plan-options ion-margin-top" *ngIf="availablePlans$ | async as plans; else loadingPlans">
+        <ion-text color="dark" *ngIf="plans.length > 0 && sub.status !== 'cancelled' && sub.status !== 'ended'"><h2 class="section-title">Change Your Plan</h2></ion-text>
+        <ion-list *ngIf="plans.length > 0 && sub.status !== 'cancelled' && sub.status !== 'ended'" class="plan-list" lines="none">
+          <ion-item *ngFor="let plan of plans"
+            [button]="plan.id !== sub.planId"
+            (click)="plan.id !== sub.planId ? handleChangePlan(plan.id, sub) : null"
+            [disabled]="plan.id === sub.planId || (isProcessingAction && currentActionPlanId !== plan.id)"
+            [class.current-plan-item]="plan.id === sub.planId"
+            detail="false">
+            <ion-icon [name]="plan.id === sub.planId ? 'checkmark-circle' : 'radio-button-off-outline'" slot="start" [color]="plan.id === sub.planId ? 'success' : 'medium'" aria-hidden="true"></ion-icon>
+            <ion-label class="ion-text-wrap">
+              <h2>{{ plan.name }}</h2>
+              <p>{{ plan.price | currency:plan.currency:'symbol':'1.2-2' }} / {{ plan.interval }}</p>
+              <p class="plan-description">{{ plan.description }}</p>
+            </ion-label>
+            <ion-button slot="end" fill="clear" *ngIf="plan.id === sub.planId" disabled class="current-plan-badge">Current</ion-button>
+            <ion-button slot="end" *ngIf="plan.id !== sub.planId" [disabled]="isProcessingAction && currentActionPlanId !== plan.id" size="default" fill="outline">
+              <ion-spinner *ngIf="isProcessingAction && currentActionPlanId === plan.id" name="dots"></ion-spinner>
+              <span *ngIf="!(isProcessingAction && currentActionPlanId === plan.id)">Select</span>
+            </ion-button>
+          </ion-item>
+        </ion-list>
+      </div>
+      <ng-template #loadingPlans>
+        <div class="loading-container ion-text-center" *ngIf="isLoading"> <ion-spinner name="dots" color="primary"></ion-spinner>
+            <p>Loading available plans...</p>
+        </div>
+      </ng-template>
+    </ng-container>
+
+    <ng-template #noSubscriptionState>
+      <div *ngIf="!isLoading" class="ion-text-center"> <ion-card class="no-subscription-card" mode="md">
+          <ion-card-header>
+            <ion-card-title color="primary">No Active Subscription</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <p class="ion-margin-bottom">You currently do not have an active subscription. Please choose a plan to get started.</p>
+            <div class="plan-options" *ngIf="availablePlans$ | async as plans; else loadingPlansNoSub">
+              <ion-text color="dark" *ngIf="plans.length > 0"><h2 class="section-title">Available Plans</h2></ion-text>
+              <ion-list *ngIf="plans.length > 0" class="plan-list" lines="none">
+                <ion-item *ngFor="let plan of plans" (click)="handleChangePlan(plan.id)" button [disabled]="isProcessingAction" detail="false">
+                  <ion-icon name="rocket-outline" slot="start" color="secondary" aria-hidden="true"></ion-icon>
+                  <ion-label class="ion-text-wrap">
+                    <h2>{{ plan.name }}</h2>
+                    <p>{{ plan.price | currency:plan.currency:'symbol':'1.2-2' }} / {{ plan.interval }}</p>
+                    <p class="plan-description">{{ plan.description }}</p>
+                  </ion-label>
+                  <ion-button slot="end" [disabled]="isProcessingAction" size="default">
+                    <ion-spinner *ngIf="isProcessingAction && currentActionPlanId === plan.id" name="dots"></ion-spinner>
+                    <span *ngIf="!(isProcessingAction && currentActionPlanId === plan.id)">Subscribe</span>
+                  </ion-button>
+                </ion-item>
+              </ion-list>
+              <p *ngIf="!plans.length && !(isLoading || errorMessage)" class="ion-padding-top">No plans available at the moment. Please check back later or contact support.</p>
+            </div>
+             <ng-template #loadingPlansNoSub>
+                <div class="loading-container ion-text-center" *ngIf="isLoading">
+                    <ion-spinner name="dots" color="primary"></ion-spinner>
+                    <p>Loading available plans...</p>
+                </div>
+              </ng-template>
+          </ion-card-content>
+        </ion-card>
+      </div>
+    </ng-template>
+  </ng-container>
+</ion-content>

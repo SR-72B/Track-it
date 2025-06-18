@@ -1,0 +1,25 @@
+<!-- src/app/communication/chat/chat-detail.component.html -->
+<ion-header>
+    <ion-toolbar color="primary">
+      <ion-buttons slot="start">
+        <ion-back-button defaultHref="/communication/chats"></ion-back-button>
+      </ion-buttons>
+      <ion-title>{{ partnerName }}</ion-title>
+      <ion-buttons slot="end">
+        <ion-button (click)="initiateVideoCall()">
+          <ion-icon slot="icon-only" name="videocam"></ion-icon>
+        </ion-button>
+      </ion-buttons>
+    </ion-toolbar>
+  </ion-header>
+  
+  <ion-content>
+    <div *ngIf="isLoading" class="loading-container">
+      <ion-spinner name="crescent"></ion-spinner>
+      <p>Loading messages...</p>
+    </div>
+  
+    <div class="message-container">
+      <ng-container *ngIf="messages$ | async as messages">
+        <div *ngIf="messages.length === 0" class="no-messages">
+          <ion-icon name="chatbubble-ellipses-outline" size="large" color

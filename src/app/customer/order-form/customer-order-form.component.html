@@ -1,0 +1,63 @@
+<div *ngIf="orderForm.fields && orderForm.fields.length > 0" class="dynamic-fields-section">
+  <ion-list lines="none" [formArrayName]="'fields'">
+    <ion-card *ngFor="let fieldCtrl of fields.controls; let i = index" [formGroupName]="i.toString()" class="dynamic-field-card">
+      <ion-item class="dynamic-field-item">
+        <ng-container [ngSwitch]="fieldCtrl.get('type')?.value">
+
+          <!-- Text Inputs -->
+          <ion-input *ngSwitchCase="'text'" [formControlName]="fieldCtrl.get('id')?.value" type="text"
+            [label]="fieldCtrl.get('label')?.value + (fieldCtrl.get('required')?.value ? ' *' : '')"
+            labelPlacement="floating"
+            [placeholder]="fieldCtrl.get('placeholder')?.value || ''"></ion-input>
+
+          <ion-input *ngSwitchCase="'email'" [formControlName]="fieldCtrl.get('id')?.value" type="email"
+            [label]="fieldCtrl.get('label')?.value + (fieldCtrl.get('required')?.value ? ' *' : '')"
+            labelPlacement="floating"
+            [placeholder]="fieldCtrl.get('placeholder')?.value || ''"></ion-input>
+
+          <ion-input *ngSwitchCase="'number'" [formControlName]="fieldCtrl.get('id')?.value" type="number"
+            [label]="fieldCtrl.get('label')?.value + (fieldCtrl.get('required')?.value ? ' *' : '')"
+            labelPlacement="floating"
+            [placeholder]="fieldCtrl.get('placeholder')?.value || ''"></ion-input>
+
+          <ion-input *ngSwitchCase="'phone'" [formControlName]="fieldCtrl.get('id')?.value" type="tel"
+            [label]="fieldCtrl.get('label')?.value + (fieldCtrl.get('required')?.value ? ' *' : '')"
+            labelPlacement="floating"
+            [placeholder]="fieldCtrl.get('placeholder')?.value || ''"></ion-input>
+
+          <ion-input *ngSwitchCase="'date'" [formControlName]="fieldCtrl.get('id')?.value" type="date"
+            [label]="fieldCtrl.get('label')?.value + (fieldCtrl.get('required')?.value ? ' *' : '')"
+            labelPlacement="floating"></ion-input>
+
+          <ion-textarea *ngSwitchCase="'textarea'" [formControlName]="fieldCtrl.get('id')?.value"
+            [label]="fieldCtrl.get('label')?.value + (fieldCtrl.get('required')?.value ? ' *' : '')"
+            labelPlacement="floating" [placeholder]="fieldCtrl.get('placeholder')?.value || ''" rows="4"
+            autoGrow="true"></ion-textarea>
+
+          <!-- Radio Group -->
+          <ion-list *ngSwitchCase="'radio'" class="ion-no-padding dynamic-field-options-list">
+            <ion-radio-group [formControlName]="fieldCtrl.get('id')?.value">
+              <ion-list-header>
+                <ion-label>
+                  {{ fieldCtrl.get('label')?.value }}
+                  <span *ngIf="fieldCtrl.get('required')?.value" class="required-asterisk">*</span>
+                </ion-label>
+              </ion-list-header>
+              <ion-item *ngFor="let option of fieldCtrl.get('options')?.value">
+                <ion-radio [value]="option" slot="start"></ion-radio>
+                <ion-label>{{ option }}</ion-label>
+              </ion-item>
+            </ion-radio-group>
+          </ion-list>
+
+        </ng-container>
+      </ion-item>
+
+      <!-- Validation Messages -->
+      <div *ngIf="fieldCtrl.get('id')?.invalid && (fieldCtrl.get('id')?.touched || fieldCtrl.get('id')?.dirty)"
+        class="error-message ion-padding-start">
+        <small *ngIf="fieldCtrl.get('id')?.errors?.['required']">This field is required.</small>
+      </div>
+    </ion-card>
+  </ion-list>
+</div>

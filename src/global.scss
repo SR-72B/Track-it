@@ -1,0 +1,274 @@
+/* Core CSS required for Ionic components to work properly */
+@import "~@ionic/angular/css/core.css";
+/* Basic CSS for apps built with Ionic */
+@import "@ionic/angular/css/normalize.css";
+@import "@ionic/angular/css/structure.css";
+@import "@ionic/angular/css/typography.css";
+@import '@ionic/angular/css/display.css';
+/* Optional CSS utils that can be commented out */
+@import "@ionic/angular/css/padding.css";
+@import "@ionic/angular/css/float-elements.css";
+@import "@ionic/angular/css/text-alignment.css";
+@import "@ionic/angular/css/text-transformation.css";
+@import "~@ionic/angular/css/flex-utils.css";
+
+/* Global Styling */
+:root {
+  // Custom palette
+  --app-background: #f8f9fa;
+  --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  --transition-medium: 0.3s ease;
+}
+
+/* Base Styles */
+* { // Added universal selector '*'
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: "Roboto", "Helvetica Neue", sans-serif;
+  background-color: var(--app-background);
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  margin-top: 0;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+/* Card Styling */
+ion-card {
+  box-shadow: var(--card-shadow);
+  border-radius: 12px;
+  margin: 16px;
+}
+
+ion-card-header {
+  padding-bottom: 8px;
+}
+
+ion-card-title {
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Form Styling */
+ion-item {
+  --padding-start: 0;
+  --inner-padding-end: 0;
+  --background: transparent;
+}
+
+.error-message {
+  color: var(--ion-color-danger);
+  font-size: 12px;
+  margin: 4px 0 0 16px;
+}
+
+/* Button Styling */
+ion-button {
+  --border-radius: 8px;
+  font-weight: 500;
+  text-transform: none;
+}
+
+/* Status Badge Styling */
+ion-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+/* Dashboard Components */
+.welcome-card {
+  background: var(--ion-color-primary);
+  color: white;
+  border-radius: 0 0 16px 16px;
+  margin-bottom: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.welcome-card h1 {
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.welcome-card p {
+  margin: 0;
+  opacity: 0.9;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 0 16px;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  box-shadow: var(--card-shadow);
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: bold;
+  color: var(--ion-color-primary);
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: var(--ion-color-medium);
+  margin: 0;
+}
+
+/* Order Status Colors */
+.status-pending {
+  color: var(--ion-color-warning);
+}
+
+.status-processing {
+  color: var(--ion-color-primary);
+}
+
+.status-shipped {
+  color: var(--ion-color-tertiary);
+}
+
+.status-delivered {
+  color: var(--ion-color-success);
+}
+
+.status-cancelled {
+  color: var(--ion-color-danger);
+}
+
+/* Order Update Timeline */
+.order-update {
+  margin-bottom: 16px;
+}
+
+.order-update h2 {
+  display: flex;
+  align-items: center;
+}
+
+.update-date {
+  margin-left: 8px;
+  font-size: 12px;
+  color: var(--ion-color-medium);
+}
+
+/* Form Builder Styling */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 24px 0 16px;
+  padding: 0 16px;
+}
+
+.section-header h3 {
+  margin: 0;
+  font-weight: 600;
+}
+
+.options-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 16px 0 8px;
+}
+
+.no-fields {
+  padding: 24px;
+  text-align: center;
+  background-color: var(--ion-color-light);
+  border-radius: 8px;
+}
+
+/* Profile Styling */
+.profile-header {
+  padding: 24px 16px;
+  text-align: center;
+}
+
+.profile-avatar {
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 16px;
+  background-color: var(--ion-color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Utility Classes */
+.ion-text-center {
+  text-align: center;
+}
+
+.ion-text-right {
+  text-align: right;
+}
+
+.ion-text-bold {
+  font-weight: 600;
+}
+
+.ion-margin-top {
+  margin-top: 16px;
+}
+
+.ion-margin-bottom {
+  margin-bottom: 16px;
+}
+
+.ion-padding {
+  padding: 16px;
+}
+
+/* Animation Utilities */
+.fade-in {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Media Queries */
+@media (min-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 16px;
+  }
+
+  ion-card {
+    margin: 24px;
+  }
+}
+      

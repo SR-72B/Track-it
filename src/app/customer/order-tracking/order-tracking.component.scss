@@ -1,0 +1,324 @@
+// src/app/customer/order-tracking/order-tracking.component.scss
+
+// Consistent with other pages
+.order-tracking-content {
+  --background: var(--ion-color-light, #f4f5f8);
+}
+
+.loading-container,
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  text-align: center;
+  padding: 20px;
+
+  ion-spinner {
+    margin-bottom: 16px;
+    width: 32px;
+    height: 32px;
+  }
+
+  p {
+    color: var(--ion-color-medium-shade);
+    font-size: 1.1em;
+    margin-top: 8px;
+  }
+
+  .error-icon { // Class used in the HTML
+    font-size: 3.5em;
+    margin-bottom: 8px;
+  }
+
+  ion-button {
+    margin-top: 16px;
+  }
+}
+
+
+.order-header {
+  margin-bottom: 24px; // Increased margin
+  position: relative;
+  padding: 16px;
+  background-color: var(--ion-color-light-tint); // Subtle background for header section
+  border-radius: var(--ion-border-radius, 8px); // Consistent border radius
+  box-shadow: var(--card-shadow-light, 0 2px 5px rgba(0,0,0,0.05));
+
+  h1 { // Targets the <h1> in HTML
+    font-size: 1.5em; // Adjusted for better hierarchy
+    font-weight: 600;
+    margin-top: 0;
+    margin-bottom: 4px;
+    color: var(--ion-color-dark-shade);
+  }
+
+  p { // For "Placed on" date
+    font-size: 0.9em;
+    color: var(--ion-color-medium-shade);
+    margin-bottom: 12px;
+  }
+}
+
+.order-status-badge {
+  display: inline-block;
+  padding: 8px 16px; // Slightly larger padding
+  border-radius: 20px; // Pill shape
+  font-size: 0.9em;
+  font-weight: 600; // Bolder
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+
+  // Classes applied by [ngClass]="getStatusClass(order.status)"
+  &.status-pending { background-color: var(--ion-color-warning); }
+  &.status-processing { background-color: var(--ion-color-primary); }
+  &.status-shipped { background-color: var(--ion-color-tertiary); }
+  &.status-delivered, &.status-completed { background-color: var(--ion-color-success); }
+  &.status-cancelled, &.status-failed { background-color: var(--ion-color-danger); }
+  &.status-other { background-color: var(--ion-color-medium); }
+}
+
+.tracking-container {
+  margin: 24px 0; // Adjusted margin
+  padding: 16px;
+  background-color: var(--ion-background-color, white); // Card-like background
+  border-radius: var(--ion-border-radius, 8px);
+  box-shadow: var(--card-shadow, 0 3px 6px rgba(0,0,0,0.07));
+}
+
+.progress-bar-container { // Renamed from .progress-bar for clarity
+  height: 10px; // Slightly thicker
+  background-color: var(--ion-color-step-150, #e0e0e0); // Lighter track
+  border-radius: 5px;
+  margin-bottom: 20px; // More space below progress bar
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background-color: var(--ion-color-success);
+  border-radius: 5px;
+  transition: width 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55); // Smoother transition
+}
+
+.status-steps {
+  display: flex;
+  justify-content: space-between;
+  position: relative; // For potential line connecting steps if desired later
+}
+
+.status-step {
+  text-align: center;
+  flex: 1;
+  position: relative; // For connecting lines if added
+
+  .step-indicator {
+    width: 36px; // Slightly larger
+    height: 36px;
+    border-radius: 50%;
+    background-color: var(--ion-color-step-200, #ccc); // Default inactive color
+    color: var(--ion-color-medium-contrast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 8px; // Adjusted margin
+    font-weight: bold;
+    border: 2px solid var(--ion-background-color, white); // Creates a nice ring effect
+    transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+
+    ion-icon {
+      font-size: 20px; // Ensure icon fits well
+    }
+  }
+
+  &.active .step-indicator,
+  &.completed .step-indicator {
+    background-color: var(--ion-color-success);
+    color: var(--ion-color-success-contrast, white);
+    border-color: var(--ion-color-success-shade);
+  }
+
+  &.current .step-indicator {
+    background-color: var(--ion-color-primary); // Current step highlight
+    color: var(--ion-color-primary-contrast, white);
+    border-color: var(--ion-color-primary-shade);
+    box-shadow: 0 0 0 4px rgba(var(--ion-color-primary-rgb, 56, 128, 255), 0.3); // Glow effect
+  }
+
+  .step-label {
+    font-size: 0.75em; // Slightly smaller
+    color: var(--ion-color-medium-shade);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  &.active .step-label,
+  &.completed .step-label {
+    color: var(--ion-color-dark-shade);
+    font-weight: 500;
+  }
+  &.current .step-label {
+    color: var(--ion-color-primary);
+    font-weight: 600;
+  }
+}
+
+.cancelled-status,
+.failed-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 30px 0;
+  text-align: center;
+  padding: 20px;
+  background-color: rgba(var(--ion-color-danger-rgb), 0.05);
+  border-radius: var(--ion-border-radius, 8px);
+  border: 1px solid rgba(var(--ion-color-danger-rgb), 0.2);
+
+
+  .status-icon-large { // Class used in HTML
+    font-size: 48px; // Adjusted from 64px
+    margin-bottom: 12px;
+    color: var(--ion-color-danger);
+  }
+
+  h2 { // Targets h2 in HTML
+    margin-top: 0;
+    margin-bottom: 8px;
+    color: var(--ion-color-danger-shade);
+    font-weight: 600;
+    font-size: 1.2em;
+  }
+  p {
+    font-size: 0.9em;
+    color: var(--ion-color-medium-shade);
+  }
+}
+
+.order-updates-card,
+.order-summary-details-card { // Common styling for these cards
+  margin-left: 0;
+  margin-right: 0;
+  ion-card-title {
+    font-size: 1.1em;
+    font-weight: 600;
+  }
+}
+
+.timeline {
+  position: relative;
+  margin: 20px 0 0; // No top margin if header present
+  padding-left: 10px; // Adjust for badge alignment
+
+  &:before { // The vertical line
+    content: '';
+    position: absolute;
+    top: 10px; // Start below first badge center
+    bottom: 10px; // End above last badge center
+    left: 15px; // Center of the 32px badge
+    width: 2px;
+    background-color: var(--ion-color-step-200, #e0e0e0);
+  }
+}
+
+.timeline-item {
+  position: relative;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: flex-start; // Align items to the top of the badge
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  .timeline-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    z-index: 1;
+    flex-shrink: 0; // Prevent badge from shrinking
+
+    // Status colors for timeline badges
+    &.status-pending { background-color: var(--ion-color-warning); }
+    &.status-processing { background-color: var(--ion-color-primary); }
+    &.status-shipped { background-color: var(--ion-color-tertiary); }
+    &.status-delivered, &.status-completed { background-color: var(--ion-color-success); }
+    &.status-cancelled, &.status-failed { background-color: var(--ion-color-danger); }
+    &.status-other { background-color: var(--ion-color-medium); }
+
+    ion-icon {
+      font-size: 18px; // Smaller icon for badge
+    }
+  }
+
+  .timeline-content {
+    margin-left: 16px; // Space from badge
+    background-color: var(--ion-color-light-tint); // Subtle background for content
+    padding: 12px 16px;
+    border-radius: 8px;
+    flex: 1;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+
+    h3 {
+      margin-top: 0;
+      margin-bottom: 4px;
+      font-size: 1em;
+      font-weight: 600;
+      text-transform: capitalize;
+    }
+
+    .timeline-message {
+      font-size: 0.9em;
+      color: var(--ion-color-dark-tint);
+      margin-bottom: 6px;
+      white-space: pre-wrap;
+    }
+    .timeline-date {
+      font-size: 0.75em;
+      color: var(--ion-color-medium-shade);
+      margin-bottom: 0;
+    }
+  }
+}
+
+.no-updates {
+  text-align: center;
+  padding: 20px;
+  color: var(--ion-color-medium);
+  font-style: italic;
+}
+
+.uploaded-files {
+  margin-top: 20px;
+  padding: 0 8px; // Add some padding if not inside a card
+
+  h4 { // Targets h4 in HTML
+    margin-bottom: 12px;
+    font-size: 1.1em;
+    font-weight: 600;
+    color: var(--ion-color-dark-shade);
+  }
+  ion-item {
+    --padding-start: 0;
+    --inner-padding-end: 0;
+    ion-icon[slot="start"] {
+      font-size: 1.3em;
+    }
+    ion-icon[slot="end"] {
+      font-size: 1.2em;
+    }
+  }
+}
+
+// Empty state for when no order data is found at all
+.empty-state-icon {
+  font-size: 3.5em;
+  margin-bottom: 16px;
+}

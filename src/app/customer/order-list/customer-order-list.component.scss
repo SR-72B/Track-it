@@ -1,0 +1,117 @@
+// Segment styling
+ion-segment {
+  --background: var(--ion-color-light);
+  padding: 4px;
+}
+
+ion-segment-button {
+  --indicator-color: var(--ion-color-primary);
+  --color-checked: var(--ion-color-primary);
+  --color: var(--ion-color-medium);
+  font-size: 13px;
+  min-height: 30px;
+}
+
+// Order list styling
+ion-list {
+  background: transparent;
+  padding: 8px;
+}
+
+ion-item {
+  --padding-start: 16px;
+  --inner-padding-end: 16px;
+  --background: white;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  box-shadow: var(--card-shadow);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+ion-item:active {
+  --background: var(--ion-color-light);
+  transform: scale(0.98);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+ion-item h2 {
+  font-weight: 600;
+  margin-bottom: 4px;
+  font-size: 16px;
+}
+
+ion-item h3 {
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+
+ion-item p {
+  font-size: 12px;
+  color: var(--ion-color-medium);
+}
+
+ion-badge {
+  padding: 4px 8px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+// Empty state styling
+.ion-text-center {
+  padding: 32px 16px;
+}
+
+.ion-text-center ion-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.ion-text-center h4 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.ion-text-center p {
+  color: var(--ion-color-medium);
+  margin-bottom: 20px;
+  max-width: 280px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+// Animation for list items
+ion-item {
+  animation: fadeInUp 0.3s ease backwards;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Staggered animation for list items
+@for $i from 1 through 10 {
+  ion-item:nth-child(#{$i}) {
+    animation-delay: #{$i * 0.05}s;
+  }
+}
+
+// Media queries for tablet/desktop
+@media (min-width: 768px) {
+  ion-content {
+    --background: var(--app-background);
+  }
+  
+  ion-list {
+    max-width: 800px;
+    margin: 16px auto;
+  }
+}

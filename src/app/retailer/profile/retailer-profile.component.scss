@@ -1,0 +1,63 @@
+scss/* src/app/retailer/profile/retailer-profile.component.scss */
+.profile-header {
+  padding: 20px 0;
+}
+
+.profile-avatar {
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 15px;
+  background-color: var(--ion-color-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+ion-icon {
+  font-size: 60px;
+}
+
+h2 {
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+p {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: var(--ion-color-medium);
+}
+
+ion-badge {
+  margin: 0 5px;
+}
+
+.stats-container {
+  margin-top: 20px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.stat-card {
+  background-color: var(--ion-color-light);
+  border-radius: 8px;
+  padding: 15px;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: bold;
+  color: var(--ion-color-primary);
+}
+
+.stat-label {
+  font-size: 14px;
+  color: var(--ion-color-medium);
+  margin-top: 5px;
+}

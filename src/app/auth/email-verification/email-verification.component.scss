@@ -1,0 +1,82 @@
+// src/app/auth/email-verification/email-verification.component.scss
+.verification-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  text-align: center;
+  min-height: 80vh; // Ensure it takes up significant space
+}
+
+.logo-container {
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+.logo {
+  max-width: 150px;
+  height: auto;
+}
+
+.icon-container {
+  margin-bottom: 24px;
+  ion-icon { // Scoped to icon-container
+    font-size: 64px; // This will apply to icons within .icon-container
+  }
+}
+
+// Specific icon styling
+ion-icon[name="checkmark-circle-outline"] { // Updated to -outline
+  color: var(--ion-color-success);
+}
+
+ion-icon[name="alert-circle-outline"], // Updated to -outline (assuming this is for error)
+ion-icon[name="close-circle-outline"] { // Updated to -outline (if used for generic error)
+  color: var(--ion-color-danger);
+}
+
+
+.status-section { // Helper class added in the HTML artifact
+  h2 {
+    font-size: 24px;
+    font-weight: 600;
+    margin-top: 0; // Remove default top margin if icon is above
+    margin-bottom: 16px;
+  }
+
+  p {
+    color: var(--ion-color-medium-shade, #757575);
+    margin-bottom: 24px;
+    max-width: 500px;
+    line-height: 1.5;
+  }
+
+  ion-button {
+    margin-top: 16px;
+  }
+}
+
+
+.spinner-container {
+  margin-bottom: 24px;
+  ion-spinner { // Scoped to spinner-container
+    width: 48px;
+    height: 48px;
+  }
+}
+
+// Media queries for responsive design
+@media (min-width: 768px) {
+  .verification-container {
+    padding: 48px 24px;
+  }
+  
+  .status-section h2 { // More specific
+    font-size: 28px;
+  }
+  
+  .status-section p { // More specific
+    font-size: 16px;
+  }
+}

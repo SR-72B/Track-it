@@ -1,0 +1,197 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/retailer/forms"></ion-back-button>
+    </ion-buttons>
+    <ion-title>{{ isEditing ? 'Edit Form' : 'Create New Form' }}</ion-title>
+    <ion-buttons slot="end" *ngIf="isEditing && formId">
+      <ion-button (click)="confirmDelete()" color="danger" fill="clear">
+        <ion-icon slot="icon-only" name="trash-outline" aria-label="Delete Form"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding form-builder-content">
+  <div *ngIf="isLoading" class="loading-container ion-text-center">
+    <ion-spinner name="crescent"></ion-spinner>
+    <p>Loading form data...</p>
+  </div>
+
+  <div *ngIf="errorMessage && !isLoading" class="error-container ion-text-center">
+    <ion-icon name="alert-circle-outline" color="danger" class="error-icon"></ion-icon>
+    <p>{{ errorMessage }}</p>
+    <ion-button (click)="isEditing && formId ? loadFormToEdit(formId) : initForm()" fill="outline">
+      Retry
+    </ion-button>
+  </div>
+
+  <form [formGroup]="formBuilderForm" (ngSubmit)="saveForm()" *ngIf="!isLoading && !errorMessage">
+    <ion-card class="form-details-card">
+      <ion-card-header>
+        <ion-card-title>Form Details</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-item lines="full">
+          <ion-label position="floating">Form Title <ion-text color="danger">*</ion-text></ion-label>
+          <ion-input formControlName="title" type="text" placeholder="e.g., T-Shirt Order Form"></ion-input>
+        </ion-item>
+        <div *ngIf="formBuilderForm.get('title')?.invalid && (formBuilderForm.get('title')?.touched || formBuilderForm.get('title')?.dirty)" class="error-message">
+          <div *ngIf="formBuilderForm.get('title')?.errors?.['required']">Title is required.</div>
+        </div>
+
+        <ion-item lines="full" class="ion-margin-top">
+          <ion-label position="floating">Description (Optional)</ion-label>
+          <ion-textarea formControlName="description" rows="3" placeholder="Briefly describe this form's purpose"></ion-textarea>
+        </ion-item>
+      </ion-card-content>
+    </ion-card>
+
+    <div class="section-header">
+      <h3>Form Fields</h3>
+      <ion-button size="small" fill="clear" (click)="addField()" type="button">
+        <ion-icon name="add-circle-outline" slot="start"></ion-icon>
+        Add Field
+      </ion-button>
+    </div>
+
+    <div formArrayName="fields" class="fields-array-container">
+      <ng-container *ngIf="fields.controls.length > 0; else noFieldsTemplate">
+        <ion-card *ngFor="let field of fields.controls; let i = index" [formGroupName]="i" class="field-card">
+          <ion-card-header class="field-card-header">
+            <ion-card-subtitle>Field {{ i + 1 }}</ion-card-subtitle>
+            <ion-buttons slot="end">
+              <ion-button fill="clear" color="danger" (click)="removeField(i)" type="button" aria-label="Remove Field">
+                <ion-icon slot="icon-only" name="trash-bin-outline"></ion-icon>
+              </ion-button>
+            </ion-buttons>
+          </ion-card-header>
+
+          <ion-card-content>
+            <ion-item lines="full">
+              <ion-label position="floating">Field Label <ion-text color="danger">*</ion-text></ion-label>
+              <ion-input formControlName="label" type="text" placeholder="e.g., Your Name, T-Shirt Size"></ion-input>
+            </ion-item>
+            <ion-item lines="full">
+              <ion-label>Field Type <ion-text color="danger">*</ion-text></ion-label>
+              <ion-select formControlName="type" interface="action-sheet" placeholder="Select Type">
+                <ion-select-option *ngFor="let type of fieldTypes" [value]="type.value">{{ type.label }}</ion-select-option>
+              </ion-select>
+            </ion-item>
+
+            <ion-item lines="none">
+              <ion-label>Required Field</ion-label>
+              <ion-toggle formControlName="required" slot="end"></ion-toggle>
+            </ion-item>
+
+            <ion-item lines="full">
+              <ion-label position="floating">Description (Optional)</ion-label>
+              <ion-input formControlName="description" type="text" placeholder="Help text for this field"></ion-input>
+            </ion-item>
+            
+            <ion-item lines="full">
+              <ion-label position="floating">Placeholder (Optional)</ion-label>
+              <ion-input formControlName="placeholder" type="text" placeholder="e.g., John Doe"></ion-input>
+            </ion-item>
+
+            <ion-item lines="full">
+              <ion-label position="floating">Default Value (Optional)</ion-label>
+              <ion-input formControlName="defaultValue" type="text"></ion-input>
+            </ion-item>
+
+            <div *ngIf="isFieldTypeWithOptions(i)" class="options-container ion-margin-top">
+              <div class="options-header">
+                <ion-label color="medium">Options for Multiple Choice <ion-text color="danger">*</ion-text></ion-label>
+                <ion-button size="small" fill="clear" (click)="addOption(i)" type="button">
+                  <ion-icon name="add-circle-outline" slot="start"></ion-icon>
+                  Add Option
+                </ion-button>
+              </div>
+              <div formArrayName="options">
+                <ion-item *ngFor="let option of getOptions(i).controls; let j = index" lines="inset">
+                  <ion-input [formControlName]="j" placeholder="Option {{ j + 1 }}"></ion-input>
+                  <ion-button slot="end" fill="clear" color="danger" (click)="removeOption(i, j)" type="button" aria-label="Remove Option">
+                    <ion-icon slot="icon-only" name="remove-circle-outline"></ion-icon>
+                  </ion-button>
+                </ion-item>
+                </div>
+            </div>
+
+            <div *ngIf="field.get('type')?.value === 'upload'" class="ion-margin-top">
+                 <ion-item lines="full">
+                    <ion-label position="floating">Max File Size (MB)</ion-label>
+                    <ion-input formControlName="maxFileSizeMB" type="number" min="1" max="50"></ion-input>
+                </ion-item>
+            </div>
+
+          </ion-card-content>
+        </ion-card>
+      </ng-container>
+      <ng-template #noFieldsTemplate>
+        <div class="no-fields ion-text-center ion-padding">
+          <ion-icon name="list-circle-outline" class="empty-state-icon" color="medium"></ion-icon>
+          <h4>No Fields Added Yet</h4>
+          <p>Click "Add Field" above to start building your form.</p>
+        </div>
+      </ng-template>
+    </div>
+
+    <ion-item-divider class="ion-margin-top">File Upload Settings</ion-item-divider>
+    <ion-item lines="none">
+      <ion-label>Allow File Uploads</ion-label>
+      <ion-toggle formControlName="allowFileUpload" slot="end"></ion-toggle>
+    </ion-item>
+
+    <ng-container *ngIf="formBuilderForm.get('allowFileUpload')?.value">
+      <ion-list>
+        <ion-list-header>
+          <ion-label color="medium">Allowed File Types <ion-text color="danger">*</ion-text></ion-label>
+        </ion-list-header>
+        <ion-item *ngFor="let type of availableFileTypesForSelection" lines="inset">
+          <ion-label>{{ type.label }}</ion-label>
+          <ion-checkbox
+            slot="start"
+            [value]="type.value"
+            [checked]="isFileTypeSelected(type.value)"
+            (ionChange)="toggleFileType($event, type.value)">
+          </ion-checkbox>
+        </ion-item>
+         <div *ngIf="formBuilderForm.get('allowFileUpload')?.value && formAllowedFileTypes.length === 0 && formBuilderForm.get('allowedFileTypes')?.touched" class="error-message ion-padding-start">
+            Please select at least one allowed file type if uploads are enabled.
+        </div>
+      </ion-list>
+
+      <ion-item lines="full" class="ion-margin-top">
+        <ion-label position="floating">Max Files Allowed <ion-text color="danger">*</ion-text></ion-label>
+        <ion-input formControlName="maxFilesAllowed" type="number" min="1" max="10"></ion-input>
+      </ion-item>
+       <div *ngIf="formBuilderForm.get('maxFilesAllowed')?.invalid && (formBuilderForm.get('maxFilesAllowed')?.touched || formBuilderForm.get('maxFilesAllowed')?.dirty)" class="error-message ion-padding-start">
+          <div *ngIf="formBuilderForm.get('maxFilesAllowed')?.errors?.['required']">Max files is required.</div>
+          <div *ngIf="formBuilderForm.get('maxFilesAllowed')?.errors?.['min']">Must allow at least 1 file.</div>
+          <div *ngIf="formBuilderForm.get('maxFilesAllowed')?.errors?.['max']">Cannot allow more than 10 files.</div>
+        </div>
+    </ng-container>
+
+    <ion-item-divider class="ion-margin-top">Form Configuration</ion-item-divider>
+     <ion-item lines="full">
+      <ion-label position="floating">Cancellation Policy (Optional)</ion-label>
+      <ion-textarea formControlName="cancellationPolicy" rows="3" placeholder="e.g., Orders can be cancelled within 24 hours."></ion-textarea>
+    </ion-item>
+     <ion-item lines="full" class="ion-margin-top">
+      <ion-label position="floating">Submission Instructions (Optional)</ion-label>
+      <ion-textarea formControlName="submissionInstructions" rows="3" placeholder="e.g., Please double-check all details before submitting."></ion-textarea>
+    </ion-item>
+     <ion-item lines="none" class="ion-margin-top">
+      <ion-label>Form Active</ion-label>
+      <ion-toggle formControlName="active" slot="end"></ion-toggle>
+    </ion-item>
+
+
+    <ion-button expand="block" type="submit" [disabled]="formBuilderForm.invalid || isSubmitting" class="ion-margin-top ion-padding-bottom" size="large">
+      <ion-spinner *ngIf="isSubmitting" name="dots"></ion-spinner>
+      <span *ngIf="!isSubmitting">{{ isEditing ? 'Update Form' : 'Create Form' }}</span>
+    </ion-button>
+  </form>
+</ion-content>
+
+`

@@ -1,0 +1,300 @@
+// src/app/retailer/dashboard/dashboard.component.scss
+
+// Local Variables (Consider using global Ionic CSS variables from theme/variables.scss for consistency)
+$primary-color: var(--ion-color-primary, #3880ff); // Fallback to Ionic default blue
+$primary-shade: var(--ion-color-primary-shade, #3171e0);
+$primary-rgb: var(--ion-color-primary-rgb, 56, 128, 255);
+
+$secondary-color: var(--ion-color-light-tint, #f8f9fa); // For backgrounds
+$border-color: var(--ion-color-step-200, #e0e0e0);
+$card-shadow: var(--card-shadow, 0 4px 12px rgba(0, 0, 0, 0.08));
+$text-color-dark: var(--ion-color-dark-shade, #222428);
+$text-color-medium: var(--ion-color-medium-shade, #92949c);
+
+$spacing-unit: 16px;
+$border-radius-card: 12px;
+$border-radius-button: 20px; // For pill-shaped buttons
+
+// Main content area
+.dashboard-content {
+  --background: var(--ion-color-light, #f4f5f8); // Overall page background
+}
+
+// Loading and Error States
+.loading-container,
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  text-align: center;
+  padding: $spacing-unit * 2;
+
+  ion-spinner {
+    width: 40px;
+    height: 40px;
+    margin-bottom: $spacing-unit;
+  }
+
+  p {
+    color: $text-color-medium;
+    font-size: 1.1em;
+    margin-top: calc($spacing-unit / 2);
+  }
+
+  .error-icon {
+    font-size: 3.5em;
+    margin-bottom: calc($spacing-unit / 2);
+  }
+
+  ion-button {
+    margin-top: $spacing-unit * 1.5;
+    --border-radius: #{$border-radius-button}; // Use interpolation if $border-radius-button is a string with 'px'
+  }
+}
+
+// Welcome card styling
+.welcome-card {
+  background: linear-gradient(135deg, $primary-color, $primary-shade);
+  color: var(--ion-color-primary-contrast, white);
+  border-radius: 0 0 $border-radius-card + 8px $border-radius-card + 8px; // Softer curve at the bottom
+  padding: $spacing-unit * 1.5 $spacing-unit;
+  margin: 0 0 $spacing-unit * 1.5; // No horizontal margin to be full width
+  box-shadow: 0 6px 15px rgba($primary-rgb, 0.3);
+
+  h1 {
+    font-size: 1.8em; // Larger welcome
+    font-weight: 700;
+    margin-bottom: calc($spacing-unit / 2);
+  }
+
+  p {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 1em;
+  }
+}
+
+// Section Title Styling (for "Order Statistics", "Recent Orders", etc.)
+.section-title {
+  font-size: 1.3em;
+  font-weight: 600;
+  margin-bottom: $spacing-unit;
+  color: $text-color-dark;
+  padding-left: calc($spacing-unit / 4); // Slight indent
+}
+
+// Stats section styling
+.stats-container {
+  padding: 0 $spacing-unit $spacing-unit; // Consistent padding
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); // Responsive columns
+  gap: $spacing-unit * 0.75;
+
+  .stat-card {
+    background: var(--ion-background-color, white);
+    border-radius: $border-radius-card;
+    padding: $spacing-unit;
+    text-align: center;
+    box-shadow: $card-shadow;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+
+    &:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-value {
+      font-size: 2em; // Larger stat values
+      font-weight: 700;
+      color: $primary-color; // Default to primary
+      margin-bottom: calc($spacing-unit / 4);
+
+      &.status-pending-text { color: var(--ion-color-warning-shade); }
+      &.status-processing-text { color: var(--ion-color-primary-shade); }
+      &.status-shipped-text { color: var(--ion-color-tertiary-shade); }
+      &.status-delivered-text { color: var(--ion-color-success-shade); }
+      &.status-cancelled-text { color: var(--ion-color-danger-shade); }
+    }
+
+    .stat-label {
+      font-size: 0.85em;
+      color: $text-color-medium;
+      margin-top: calc($spacing-unit / 4);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+  }
+}
+
+// Recent orders and forms cards (Data Section Cards)
+.data-section-card {
+  margin: $spacing-unit $spacing-unit * 0.5; // Use less horizontal margin if content has padding
+  border-radius: $border-radius-card;
+  box-shadow: $card-shadow;
+  overflow: hidden; // Important for rounded corners on list items
+
+  ion-card-header {
+    padding-bottom: calc($spacing-unit / 2);
+    border-bottom: 1px solid $border-color;
+    background-color: var(--ion-color-light-tint); // Subtle header background
+
+    ion-card-title {
+      font-size: 1.15em; // Standardized
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: $text-color-dark;
+
+      ion-button { // "View All" button
+        --padding-start: 8px;
+        --padding-end: 0; // Icon makes it look balanced
+        font-size: 0.9em;
+        font-weight: 500;
+      }
+    }
+  }
+
+  ion-card-content {
+    padding: 0; // Let ion-list handle padding if it's the direct child
+  }
+
+  ion-list {
+    padding-top: calc($spacing-unit / 2);
+    padding-bottom: calc($spacing-unit / 2);
+  }
+
+  ion-item {
+    --padding-start: $spacing-unit;
+    --inner-padding-end: $spacing-unit; // For detail arrow
+    --background: transparent;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+
+    &:hover {
+      --background: var(--ion-color-light-hover, rgba(0,0,0,0.03));
+    }
+    &:active {
+      --background: var(--ion-color-light-activated, rgba(0,0,0,0.06));
+    }
+
+    ion-icon[slot="start"] {
+      margin-inline-end: $spacing-unit;
+      font-size: 1.4em;
+    }
+
+    ion-label {
+      h2 { // Order ID / Form Title
+        font-weight: 500;
+        font-size: 1em;
+        margin-bottom: 2px;
+        color: $text-color-dark;
+      }
+
+      h3 { // Customer Name
+        font-size: 0.9em;
+        color: $text-color-medium;
+        margin-bottom: 4px;
+      }
+
+      p { // Date / Form Description
+        font-size: 0.85em;
+        color: $text-color-medium;
+      }
+    }
+    ion-badge[slot="end"] {
+        font-size: 0.75em;
+        font-weight: 500;
+    }
+  }
+}
+
+// Empty state styling (within cards)
+.empty-state {
+  ion-icon.empty-state-icon { // More specific selector
+    font-size: 3.5em; // Larger icon
+    color: var(--ion-color-step-300, #cccccc); // Lighter medium
+    margin-bottom: $spacing-unit;
+    margin-top: $spacing-unit;
+  }
+
+  h4 {
+    font-size: 1.1em;
+    font-weight: 500;
+    margin-bottom: calc($spacing-unit / 2);
+    color: $text-color-dark;
+  }
+
+  p {
+    color: $text-color-medium;
+    margin-bottom: $spacing-unit * 1.5;
+    padding: 0 $spacing-unit * 1.5;
+    font-size: 0.95em;
+    line-height: 1.5;
+  }
+  ion-button {
+    --border-radius: #{$border-radius-button}; // Use interpolation
+  }
+}
+
+// Quick Actions
+.quick-actions {
+  padding: $spacing-unit;
+  margin-top: $spacing-unit;
+  ion-button {
+    --border-radius: #{$border-radius-button}; // Use interpolation
+    height: 44px; // Consistent button height
+    font-size: 0.9em;
+    margin-bottom: $spacing-unit * 0.5; // Space between buttons in a column on small screens
+  }
+}
+
+
+// Animation
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Apply animation to cards for a nice entry effect
+.stats-grid ion-card,
+.data-section-card,
+.quick-actions ion-button { // Also animate quick action buttons
+  animation: fadeIn 0.4s ease-out backwards;
+  // Stagger animation for multiple items if desired (requires JS or more complex CSS)
+}
+// Example of staggering animation for list items (if not using virtual scroll)
+// .data-section-card ion-item {
+//   animation: fadeIn 0.3s ease-out backwards;
+//   @for $i from 1 through 10 {
+//     &:nth-child(#{$i}) {
+//       animation-delay: #{$i * 0.05}s;
+//     }
+//   }
+// }
+
+
+// Media queries for responsive design
+@media (min-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); // Allow more cards if space
+  }
+
+  // Center content cards on larger screens if desired
+  // .data-section-card {
+  //   max-width: 800px;
+  //   margin-left: auto;
+  //   margin-right: auto;
+  // }
+}

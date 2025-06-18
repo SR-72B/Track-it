@@ -1,0 +1,169 @@
+// src/app/retailer/analytics/analytics.component.scss
+.analytics-content {
+  --padding-bottom: 20px;
+  --background: var(--ion-color-light, #f4f5f8); // Consistent page background
+}
+
+.loading-container,
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  text-align: center;
+  padding: 20px;
+
+  ion-spinner {
+    margin-bottom: 16px;
+    width: 40px;
+    height: 40px;
+  }
+
+  p {
+    color: var(--ion-color-medium-shade, #757575);
+    font-size: 1.1em;
+    margin-top: 8px;
+  }
+
+  .error-icon { // Class used in HTML for the error icon
+    font-size: 3.5em;
+    margin-bottom: 8px;
+  }
+
+  ion-button { // For the retry button
+    margin-top: 20px;
+    --border-radius: 20px; // Pill shape
+  }
+}
+
+.key-metrics-row {
+  margin-bottom: 16px;
+}
+
+.metric-card {
+  text-align: center;
+  --background: var(--ion-card-background-rgb, var(--ion-color-light-tint, #f5f5f5));
+  border-radius: 12px;
+  box-shadow: var(--card-shadow, 0 2px 8px rgba(0, 0, 0, 0.06));
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--card-shadow-hover, 0 4px 12px rgba(0, 0, 0, 0.08));
+  }
+
+  ion-card-header {
+    padding: 16px;
+    // No border for a cleaner metric card look
+  }
+
+  ion-card-subtitle {
+    font-size: 0.85em; // Slightly smaller
+    color: var(--ion-color-medium-shade, #757575);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+  }
+
+  ion-card-title {
+    font-size: 2em;
+    font-weight: 700;
+    color: var(--ion-color-primary);
+  }
+}
+
+.data-section-card {
+  margin-bottom: 24px;
+  border-radius: 12px;
+  box-shadow: var(--card-shadow, 0 4px 15px rgba(0, 0, 0, 0.08));
+  background: var(--ion-card-background, white);
+
+  ion-card-header {
+    border-bottom: 1px solid var(--ion-color-step-150, #e0e0e0);
+    ion-card-title {
+      font-size: 1.2em; // Adjusted for section cards
+      font-weight: 600;
+      color: var(--ion-text-color-step-800, #333);
+    }
+  }
+  ion-card-content {
+    padding-top: 8px; // Add a bit of top padding if list is directly inside
+    padding-bottom: 8px;
+  }
+}
+
+.status-item {
+  --padding-start: 16px;
+  --inner-padding-end: 16px;
+  --min-height: 48px; // Ensure items have a decent tap target
+  font-size: 0.95em;
+  --border-color: var(--ion-color-step-100, #f0f0f0); // Light border for items if lines="full"
+
+  &:last-child {
+    --border-width: 0; // Remove border from last item if lines="full"
+  }
+
+  ion-label {
+    font-weight: 500;
+    text-transform: capitalize;
+    color: var(--ion-text-color-step-700, #555); // Default label color
+  }
+
+  .status-count {
+    color: var(--ion-color-medium-shade, #757575);
+    font-size: 0.9em;
+  }
+
+  // Status-specific label coloring
+  &.status-pending ion-label { color: var(--ion-color-warning-shade); }
+  &.status-processing ion-label { color: var(--ion-color-primary-shade); }
+  &.status-shipped ion-label { color: var(--ion-color-tertiary-shade); }
+  &.status-delivered ion-label, &.status-completed ion-label { color: var(--ion-color-success-shade); }
+  &.status-cancelled ion-label { color: var(--ion-color-danger-shade); }
+  &.status-other ion-label { color: var(--ion-color-medium-shade); }
+}
+
+.chart-container {
+  position: relative;
+  margin: 16px auto; // Add some vertical margin
+  height: 300px;
+  width: 100%;
+  max-width: 600px;
+  padding: 16px 0;
+}
+
+// Empty state styling (for when no analytics data at all)
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 40vh; // Shorter than full error/loading
+  text-align: center;
+  padding: 20px;
+  color: var(--ion-color-medium-shade);
+
+  .empty-state-icon { // Class from HTML
+    font-size: 3.5em;
+    margin-bottom: 16px;
+    // color is set in HTML via [color]="medium"
+  }
+
+  h4 {
+    font-size: 1.2em;
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: var(--ion-color-dark-shade);
+  }
+
+  p {
+    font-size: 1em;
+  }
+}
+

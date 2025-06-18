@@ -1,0 +1,171 @@
+// src/app/retailer/form-list/form-list.component.scss
+
+// This class is on ion-content in the HTML
+.form-list-content {
+  --background: var(--app-background, #f8f9fa); // Use a global app background or a fallback
+}
+
+ion-list.form-list-items { // Targeting the specific class from HTML
+  background: transparent;
+  padding: 0 8px; // Add some horizontal padding if items are edge-to-edge in content
+                  // Or manage padding on ion-content itself.
+}
+
+// Item styling with card-like appearance
+ion-item-sliding {
+  margin-bottom: 12px;
+  // The animation is applied here
+  animation: fadeInUp 0.3s ease-out backwards;
+
+  // Staggered animation delay for list items
+  // Consider removing if list can be very long and performance is an issue,
+  // or if using virtual scroll.
+  &:nth-child(1) { animation-delay: 0.05s; }
+  &:nth-child(2) { animation-delay: 0.1s; }
+  &:nth-child(3) { animation-delay: 0.15s; }
+  &:nth-child(4) { animation-delay: 0.2s; }
+  &:nth-child(5) { animation-delay: 0.25s; }
+  // Add more if you expect more items on initial load and want them animated
+}
+
+ion-item {
+  --padding-start: 16px;
+  --inner-padding-end: 16px; // For the detail arrow
+  --border-radius: 12px; // Rounded corners for the card-like item
+  --background: var(--ion-card-background, white); // Use a theme variable or fallback
+  box-shadow: var(--card-shadow, 0 4px 12px rgba(0, 0, 0, 0.05));
+  cursor: pointer;
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--card-shadow-hover, 0 6px 16px rgba(0, 0, 0, 0.08));
+  }
+
+  // Active (pressed) state for the item
+  &.item-interactive-disabled:hover,
+  &.item-disabled:hover {
+    transform: none;
+    box-shadow: var(--card-shadow, 0 4px 12px rgba(0, 0, 0, 0.05));
+    --background: var(--ion-card-background, white);
+  }
+
+  &:not(.item-interactive-disabled):not(.item-disabled):active {
+    --background: var(--ion-color-light-tint, #e9e9e9); // Slightly darker on press
+    transform: scale(0.98);
+    box-shadow: var(--card-shadow-active, 0 2px 8px rgba(0, 0, 0, 0.1));
+  }
+
+  ion-icon[slot="start"] {
+    margin-inline-end: 16px; // Space between icon and label
+    font-size: 1.5em; // Slightly larger icon for visual cue
+  }
+
+  ion-label {
+    h2 { // Form Title
+      font-size: 1.1em; // Slightly larger for title
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: var(--ion-text-color-step-150, #333); // Darker text for title
+    }
+
+    p { // Form Description and Fields count
+      font-size: 0.9em;
+      color: var(--ion-color-medium-shade, #757575);
+      margin: 0;
+
+      &:not(:last-child) {
+        margin-bottom: 2px; // Small space between description and field count
+      }
+    }
+
+    p small { // For "X fields" text
+      font-size: 0.9em; // Relative to parent p
+      color: var(--ion-color-medium-tint);
+    }
+  }
+}
+
+
+// Badge styling for Active/Inactive status
+ion-badge {
+  padding: 5px 10px; // Slightly adjusted padding
+  border-radius: 16px;
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: 0.7em; // Smaller for a subtle badge
+  letter-spacing: 0.5px;
+}
+
+// Empty state, Loading, and Error container styling (for consistency)
+.loading-container,
+.error-container,
+.empty-state { // Target the .empty-state class from HTML
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh; // Adjust as needed
+  text-align: center;
+  padding: 32px 16px;
+
+  ion-spinner {
+    width: 36px;
+    height: 36px;
+    margin-bottom: 16px;
+  }
+
+  .error-icon,
+  .empty-state-icon { // Target specific classes from HTML
+    font-size: 4em; // Larger icon
+    margin-bottom: 16px;
+    color: var(--ion-color-medium);
+  }
+
+  h4 { // For "No Order Forms" title
+    font-size: 1.25em;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--ion-color-dark-shade);
+  }
+
+  p {
+    color: var(--ion-color-medium-shade);
+    margin-bottom: 24px;
+    max-width: 320px; // Constrain width of paragraph
+    line-height: 1.5;
+  }
+
+  ion-button { // For "Try Again" or "Create First Form"
+    margin-top: 16px;
+    --border-radius: 20px; // Pill shape
+  }
+}
+
+
+// Animation definition
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Responsive styling
+@media (min-width: 768px) {
+  ion-list.form-list-items {
+    max-width: 800px; // Limit width on larger screens
+    margin-left: auto;
+    margin-right: auto;
+    padding: 16px 0; // Add some vertical padding for the list itself
+  }
+
+  .empty-state p,
+  .error-container p { // Make paragraph text wider on larger screens
+    max-width: 450px;
+  }
+}

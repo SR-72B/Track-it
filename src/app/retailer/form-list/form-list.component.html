@@ -1,0 +1,82 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+    </ion-buttons>
+    <ion-title>Order Forms</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="createForm()" aria-label="Create New Form">
+        <ion-icon slot="icon-only" name="add-circle-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding-top form-list-content">
+  <ion-refresher slot="fixed" (ionRefresh)="doRefresh($event)">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <div *ngIf="isLoading && !(forms$ | async)?.length" class="loading-container ion-text-center ion-padding">
+    <ion-spinner name="crescent" color="primary"></ion-spinner>
+    <p>Loading forms...</p>
+  </div>
+
+  <div *ngIf="errorMessage && !isLoading" class="error-container ion-text-center ion-padding">
+    <ion-icon name="alert-circle-outline" color="danger" class="error-icon"></ion-icon>
+    <p>{{ errorMessage }}</p>
+<ion-button (click)="retryLoadForms()" fill="outline" color="primary"> <ion-icon name="refresh-outline" slot="start"></ion-icon>
+      Try Again
+    </ion-button>
+  </div>
+
+  <ng-container *ngIf="!isLoading || (forms$ | async)?.length"> <ng-container *ngIf="forms$ | async as forms; else noDataOrError">
+      <ion-list *ngIf="forms.length > 0; else noForms" lines="inset" class="form-list-items">
+        <ion-item-sliding *ngFor="let form of forms" #slidingItem>
+          <ion-item (click)="editForm(form.id)" button detail="true">
+            <ion-icon name="document-text-outline" slot="start" [color]="form.active ? 'primary' : 'medium'"></ion-icon>
+            <ion-label class="ion-text-wrap">
+              <h2>{{ form.title }}</h2>
+              <p>{{ form.description || 'No description provided.' }}</p>
+              <p><small>{{ form.fields?.length || 0 }} fields</small></p>
+            </ion-label>
+            <ion-badge slot="end" [color]="form.active ? 'success' : 'medium'">
+              {{ form.active ? 'Active' : 'Inactive' }}
+            </ion-badge>
+          </ion-item>
+
+          <ion-item-options side="end">
+            <ion-item-option color="primary" (click)="editForm(form.id); slidingItem.close()">
+              <ion-icon slot="icon-only" name="create-outline" aria-label="Edit Form"></ion-icon>
+            </ion-item-option>
+            <ion-item-option [color]="form.active ? 'warning' : 'success'" (click)="toggleFormStatus(form); slidingItem.close()">
+              <ion-icon slot="icon-only" [name]="form.active ? 'eye-off-outline' : 'eye-outline'" [attr.aria-label]="form.active ? 'Deactivate Form' : 'Activate Form'"></ion-icon>
+            </ion-item-option>
+            <ion-item-option color="danger" (click)="deleteForm(form); slidingItem.close()">
+              <ion-icon slot="icon-only" name="trash-outline" aria-label="Delete Form"></ion-icon>
+            </ion-item-option>
+          </ion-item-options>
+        </ion-item-sliding>
+      </ion-list>
+
+      <ng-template #noForms>
+        <div *ngIf="!errorMessage" class="empty-state ion-text-center ion-padding">
+          <ion-icon name="document-attach-outline" class="empty-state-icon" color="medium"></ion-icon>
+          <h4>No Order Forms Yet</h4>
+          <p>Tap the '+' button above to create your first order form.</p>
+          <ion-button expand="block" (click)="createForm()" class="ion-margin-top">
+            <ion-icon name="add-circle-outline" slot="start"></ion-icon>
+            Create First Form
+          </ion-button>
+        </div>
+      </ng-template>
+    </ng-container>
+  </ng-container>
+
+  <ng-template #noDataOrError>
+    <div *ngIf="!isLoading && !errorMessage" class="ion-text-center ion-padding">
+       <p>Could not display forms at this time.</p>
+    </div>
+  </ng-template>
+
+</ion-content>

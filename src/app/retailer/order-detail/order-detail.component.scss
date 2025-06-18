@@ -1,0 +1,187 @@
+// src/app/retailer/order-detail/order-detail.component.scss
+
+// General page and content styling
+ion-content {
+  --background: var(--ion-color-light, #f4f5f8); // Use a light background for the page
+}
+
+// Card styling
+ion-card {
+  margin-left: 0;
+  margin-right: 0;
+  margin-bottom: 20px;
+  border-radius: 12px;
+  box-shadow: var(--card-shadow, 0 3px 6px rgba(0, 0, 0, 0.1)); // Softer shadow
+
+  ion-card-header {
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--ion-color-step-150, #e0e0e0); // Subtle separator
+
+    ion-card-title {
+      font-size: 1.25em; // Standardized title size
+      font-weight: 600;
+      color: var(--ion-color-dark-shade);
+    }
+
+    ion-card-subtitle {
+      font-size: 0.9em;
+      font-weight: 500;
+      margin-top: 4px;
+      text-transform: capitalize;
+    }
+  }
+
+  ion-card-content {
+    h2 { // For customer name
+      font-size: 1.1em;
+      font-weight: 500;
+      margin-top: 8px;
+      margin-bottom: 8px;
+    }
+
+    p {
+      font-size: 0.95em;
+      color: var(--ion-color-medium-shade);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+
+      ion-icon {
+        margin-right: 8px;
+        font-size: 1.1em; // Adjust icon size within paragraphs
+        color: var(--ion-color-medium);
+      }
+    }
+
+    ion-list {
+      background: transparent; // Ensure list background is transparent within card
+      padding-top: 0;
+      padding-bottom: 0;
+    }
+
+    ion-item {
+      --padding-start: 0; // Remove default item padding if content is directly in card
+      --inner-padding-end: 0;
+      --background: transparent; // Items within card content should be transparent
+
+      ion-label {
+        h3 { // For field keys in formData
+          font-size: 0.9em;
+          font-weight: 500;
+          color: var(--ion-color-medium-shade);
+          margin-bottom: 2px;
+        }
+        p { // For field values in formData
+          font-size: 1em;
+          color: var(--ion-color-dark-shade);
+          margin-bottom: 8px; // Space between form data items
+        }
+      }
+    }
+  }
+}
+
+// Order History / Updates specific styling
+.order-update { // Class applied to ion-item in the HTML
+  ion-label {
+    h2 { // Status of the update
+      font-size: 1em;
+      font-weight: 600;
+      margin-bottom: 4px;
+      text-transform: capitalize;
+    }
+    p { // Message of the update
+      font-size: 0.9em;
+      color: var(--ion-color-dark-tint);
+      white-space: pre-wrap; // Preserve formatting of the message
+      margin-bottom: 4px;
+    }
+    p small { // Timestamp
+      font-size: 0.8em;
+      color: var(--ion-color-medium-shade);
+      display: flex;
+      align-items: center;
+      ion-icon {
+        font-size: 1em; // Smaller icon for timestamp
+        margin-right: 4px;
+      }
+    }
+  }
+}
+
+// Form elements for updating status
+form {
+  ion-item {
+    --background: var(--ion-color-light-tint, #f9f9f9); // Slight background for form items
+    --border-radius: 8px;
+    margin-bottom: 16px; // More space between form items
+    --border-color: var(--ion-color-step-200, #e0e0e0); // Border for form items
+    --highlight-color-focused: var(--ion-color-primary); // Highlight when focused
+  }
+
+  ion-textarea {
+    --padding-top: 12px;
+    --padding-bottom: 12px;
+    border: 1px solid var(--ion-color-step-200, #e0e0e0); // Add a border to textarea
+    border-radius: 8px;
+    background-color: var(--ion-background-color, white); // Ensure textarea has a background
+    padding: 8px; // Inner padding for textarea
+  }
+
+  .error-message {
+    color: var(--ion-color-danger);
+    font-size: 0.8em;
+    padding-left: 16px; // Align with item padding
+    margin-top: -8px; // Reduce space after item
+    margin-bottom: 12px;
+  }
+
+  ion-button[type="submit"] {
+    --border-radius: 20px; // Pill shape
+  }
+}
+
+// Cancel button specific styling
+ion-button[color="danger"] {
+  --border-radius: 20px; // Pill shape
+}
+
+// Loading and Error states (consistent with other components)
+.loading-container,
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  text-align: center;
+  padding: 20px;
+
+  ion-spinner {
+    margin-bottom: 16px;
+  }
+
+  p {
+    color: var(--ion-color-medium-shade);
+    font-size: 1.1em;
+    margin-top: 8px;
+  }
+
+  ion-button { // For the retry button
+    margin-top: 16px;
+  }
+}
+
+// Media queries for responsive design
+@media (min-width: 768px) {
+  // The ion-content block was removed as it was empty
+  
+  // If you had a specific section for actions, you could style it here
+  // For example, centering the update form card on larger screens:
+  ion-card form { // Target the form within any ion-card
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+

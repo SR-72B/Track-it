@@ -1,0 +1,199 @@
+// src/app/payment/manage-subscription/manage-subscription.component.scss
+
+.manage-subscription-content {
+  --background: var(--ion-color-light, #f4f5f8); // Consistent page background
+  --padding-bottom: 20px;
+}
+
+.loading-container,
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  text-align: center;
+  padding: 20px;
+
+  ion-spinner {
+    margin-bottom: 16px;
+    width: 40px;
+    height: 40px;
+  }
+
+  p {
+    color: var(--ion-color-medium-shade, #757575);
+    font-size: 1.1em;
+    margin-top: 8px;
+  }
+
+  .error-icon {
+    font-size: 3.5em;
+    margin-bottom: 8px;
+  }
+
+  ion-button {
+    margin-top: 20px;
+    --border-radius: 20px; // Pill shape for retry button
+  }
+}
+
+.subscription-card,
+.no-subscription-card {
+  margin-left: 0; // Full width if ion-content has padding
+  margin-right: 0;
+  margin-bottom: 24px;
+  border-radius: 12px;
+  box-shadow: var(--card-shadow, 0 4px 12px rgba(0, 0, 0, 0.08)); // Default shadow
+  background: var(--ion-card-background, white); // Use theme variable
+
+  ion-card-header {
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--ion-color-step-150, #e0e0e0);
+  }
+
+  ion-card-title {
+    font-size: 1.3em;
+    font-weight: 600;
+  }
+
+  ion-card-subtitle {
+    font-size: 0.95em;
+    margin-top: 4px;
+    .status-text {
+      font-weight: 500;
+      text-transform: capitalize; // Ensure titlecase pipe works as expected
+    }
+  }
+}
+
+.details-list {
+  ion-item {
+    --padding-start: 16px;
+    --inner-padding-end: 16px;
+    --border-color: var(--ion-color-step-100, #f0f0f0);
+    --min-height: 50px; // Ensure items have enough height
+
+    ion-icon[slot="start"] {
+      margin-inline-end: 16px;
+      font-size: 1.3em;
+      color: var(--ion-color-medium-shade); // Consistent icon color
+    }
+
+    ion-label {
+      h3 {
+        font-size: 0.85em; // Smaller heading for detail type
+        color: var(--ion-color-medium-shade);
+        margin-bottom: 2px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+      p {
+        font-size: 1em;
+        color: var(--ion-color-dark-shade, #222428);
+        font-weight: 400;
+      }
+    }
+  }
+}
+
+.actions-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 0 8px 8px;
+
+  @media (min-width: 576px) {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+
+  ion-button {
+    --border-radius: 20px;
+    text-transform: none;
+    font-weight: 500;
+    margin: 0;
+    height: 44px; // Consistent button height
+  }
+}
+
+.plan-options {
+  margin-top: 28px;
+  .section-title {
+    font-size: 1.4em;
+    font-weight: 600;
+    margin-bottom: 16px;
+    padding-left: 4px;
+    color: var(--ion-color-dark-shade, #222428);
+  }
+}
+
+.plan-list {
+  border-radius: 12px;
+  box-shadow: var(--card-shadow, 0 4px 12px rgba(0, 0, 0, 0.08));
+  overflow: hidden; // For item rounded corners
+  background: var(--ion-card-background, white);
+
+  ion-item {
+    --padding-start: 16px;
+    --inner-padding-end: 16px;
+    --border-color: var(--ion-color-step-100, #f0f0f0);
+    --highlight-color-focused: var(--ion-color-primary-tint, #52a3ff); // Focus highlight
+
+    &.current-plan-item {
+      --background: var(--ion-color-light-tint, #f0f8ff); // Subtle highlight for current plan
+      ion-label h2 {
+        color: var(--ion-color-primary, #3880ff);
+      }
+    }
+    
+    ion-icon[slot="start"] {
+      margin-inline-end: 16px;
+      font-size: 1.4em;
+    }
+
+    ion-label {
+      h2 { // Plan name
+        font-weight: 600;
+        font-size: 1.1em;
+        margin-bottom: 4px;
+        color: var(--ion-text-color-step-800, #333);
+      }
+      p { // Price/interval
+        font-size: 0.95em;
+        color: var(--ion-color-medium-shade, #757575);
+      }
+      .plan-description {
+        font-size: 0.85em;
+        color: var(--ion-color-step-700, #666);
+        white-space: normal;
+        margin-top: 6px;
+        line-height: 1.4;
+      }
+    }
+    ion-button[slot="end"] {
+      margin-left: 8px;
+      --border-radius: 20px;
+      height: 38px; // Slightly smaller action buttons for list items
+      font-size: 0.9em;
+      &.current-plan-badge {
+        font-size: 0.8em;
+        color: var(--ion-color-success-shade, #2f9733);
+        --padding-start: 8px;
+        --padding-end: 8px;
+        --background: transparent; // Ensure it's just text
+        --box-shadow: none;
+      }
+    }
+  }
+}
+
+.no-subscription-card {
+  ion-card-content p {
+    margin-bottom: 20px;
+    font-size: 1.05em;
+    color: var(--ion-color-medium-shade, #757575);
+    line-height: 1.5;
+  }
+}

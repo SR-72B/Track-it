@@ -1,0 +1,26 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-title>Email Verification</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <div *ngIf="verifying" class="ion-text-center">
+    <ion-spinner name="crescent"></ion-spinner>
+    <p>Verifying your email...</p>
+  </div>
+
+  <div *ngIf="!verifying && verified" class="ion-text-center">
+    <ion-icon name="checkmark-circle-outline" color="success" style="font-size: 64px;"></ion-icon>
+    <h2>Email Verified!</h2>
+    <p>Your email address has been successfully verified.</p>
+    <ion-button routerLink="/auth/login" expand="block">Go to Login</ion-button>
+  </div>
+
+  <div *ngIf="!verifying && error" class="ion-text-center">
+    <ion-icon name="alert-circle-outline" color="danger" style="font-size: 64px;"></ion-icon>
+    <h2>Verification Failed</h2>
+    <p>{{ error }}</p>
+    <ion-button routerLink="/auth/login" expand="block" fill="outline">Back to Login</ion-button>
+  </div>
+</ion-content>

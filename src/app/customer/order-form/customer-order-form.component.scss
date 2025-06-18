@@ -1,0 +1,213 @@
+// src/app/customer/order-form/customer-order-form.component.scss
+
+// Page-level variables (can be overridden by global theme)
+$form-card-background: var(--ion-card-background, white);
+$form-item-background: var(--ion-item-background-activated, var(--ion-color-light-tint, #f9f9f9));
+$form-label-color: var(--ion-color-medium-shade, #757575);
+$form-input-text-color: var(--ion-color-dark-shade, #333);
+$form-error-color: var(--ion-color-danger, #f44336);
+$form-divider-color: var(--ion-color-step-200, #e0e0e0);
+$form-spacing-unit: 16px;
+$form-border-radius: 8px;
+
+// General content styling
+ion-content {
+  --background: var(--app-background, var(--ion-color-light, #f4f5f8));
+}
+
+// Form header (if you add one above the <form> tag)
+.form-header {
+  margin-bottom: $form-spacing-unit * 1.5;
+  padding: 0 calc($form-spacing-unit / 2); // Add some horizontal padding if content is not padded
+
+  h1 {
+    font-size: 1.8em;
+    font-weight: 600;
+    color: var(--ion-color-primary);
+    margin-bottom: calc($form-spacing-unit / 2);
+  }
+  p {
+    font-size: 1em;
+    color: $form-label-color;
+  }
+}
+
+// Styling for the main form container
+form {
+  ion-item {
+    --padding-start: 0; // Let the card or content padding handle this
+    --inner-padding-end: 0;
+    --background: transparent; // Items transparent within cards or sections
+    margin-bottom: $form-spacing-unit * 0.75;
+    border-bottom: 1px solid var(--ion-color-step-150, #eee); // Subtle separator for items
+
+    &:last-of-type {
+      border-bottom: none;
+    }
+
+    ion-label[position="floating"] {
+      color: $form-label-color;
+    }
+    &.item-has-focus ion-label[position="floating"],
+    &.item-has-value ion-label[position="floating"] {
+      color: var(--ion-color-primary);
+    }
+
+    ion-input,
+    ion-textarea,
+    ion-select {
+      --padding-top: 10px;
+      --padding-bottom: 10px;
+      color: $form-input-text-color;
+    }
+    ion-textarea {
+        min-height: 80px; // Ensure a decent default height
+    }
+  }
+
+  .error-message {
+    color: $form-error-color;
+    font-size: 0.8em;
+    padding-left: $form-spacing-unit; // Align with item content
+    margin-top: -($form-spacing-unit * 0.5); // Pull up slightly
+    margin-bottom: $form-spacing-unit * 0.75;
+  }
+}
+
+// File Upload Section
+.file-upload-section {
+  margin-top: $form-spacing-unit * 1.5;
+  margin-bottom: $form-spacing-unit * 1.5;
+  border: 1px solid $form-divider-color;
+  border-radius: $form-border-radius;
+  background: $form-card-background;
+
+  ion-item-divider {
+    --background: var(--ion-color-light-tint, #f0f0f0);
+    --color: var(--ion-color-dark-shade);
+    font-weight: 500;
+    min-height: 40px;
+  }
+
+  ion-item[lines="none"] { // For "Allowed file types" display
+    --background: transparent;
+    border-bottom: none;
+    ion-icon {
+      margin-inline-end: 8px;
+    }
+    ion-label small {
+      display: block; // Ensure each small tag is on its own line or wraps well
+      color: $form-label-color;
+      font-size: 0.85em;
+      &:not(:last-child) {
+        margin-bottom: 4px;
+      }
+    }
+  }
+
+  .file-input-container {
+    padding: $form-spacing-unit; // Add padding around the button
+    ion-button {
+      --border-radius: $form-border-radius;
+    }
+  }
+}
+
+.selected-files-list {
+  background: transparent; // List itself should be transparent if section has background
+  padding: 0;
+  margin-top: calc($form-spacing-unit / 2);
+
+  ion-item-divider.ion-no-padding { // For "Selected Files" header
+    --padding-start: 0;
+    --padding-end: 0;
+    ion-label {
+        font-size: 0.9em;
+        font-weight: 500;
+        color: $form-label-color;
+    }
+  }
+
+  .selected-file-item {
+    --background: var(--ion-color-light-tint, #f9f9f9);
+    margin-bottom: calc($form-spacing-unit / 2);
+    border-radius: $form-border-radius;
+    --border-color: var(--ion-color-step-100, #eee);
+    border-bottom: 1px solid var(--border-color); // Add border if lines="none"
+
+    &:last-child {
+      margin-bottom: 0;
+      border-bottom: none;
+    }
+
+    ion-icon[slot="start"] {
+      font-size: 1.4em;
+      margin-inline-end: 12px;
+    }
+    ion-label {
+      h3 {
+        font-size: 0.95em;
+        font-weight: 500;
+        color: $form-input-text-color;
+      }
+      p small {
+        font-size: 0.8em;
+        color: $form-label-color;
+      }
+    }
+    ion-button[slot="end"] {
+      --padding-start: 4px;
+      --padding-end: 4px;
+      height: 30px;
+      ion-icon {
+        font-size: 1.5em;
+      }
+    }
+  }
+}
+
+// Policy Sections
+.cancellation-policy,
+.submission-instructions {
+  margin-top: $form-spacing-unit * 1.5;
+  border: 1px solid $form-divider-color;
+  border-radius: $form-border-radius;
+  background: $form-card-background;
+
+  ion-item-divider {
+    --background: var(--ion-color-light-tint, #f0f0f0);
+    --color: var(--ion-color-dark-shade);
+    font-weight: 500;
+    min-height: 40px;
+  }
+
+  .policy-text { // Class applied to ion-text in HTML
+    display: block; // Make ion-text behave like a block for padding
+    padding: $form-spacing-unit;
+    p small {
+      font-size: 0.9em;
+      color: $form-label-color;
+      line-height: 1.5;
+    }
+  }
+}
+
+// Submit Button
+.submit-order-button {
+  --border-radius: $form-border-radius * 2; // More rounded submit button
+  height: 48px;
+  font-size: 1.1em;
+  font-weight: 500;
+  margin-top: $form-spacing-unit * 2; // More space before submit
+}
+
+// General loading/error states if needed within this component's scope
+// (though often handled by a global overlay or parent component)
+.loading-state, .error-state {
+    padding: $form-spacing-unit * 2;
+    text-align: center;
+    color: $form-label-color;
+    ion-spinner {
+        margin-bottom: calc($form-spacing-unit / 2);
+    }
+}

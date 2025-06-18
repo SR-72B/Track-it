@@ -1,0 +1,121 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+      <ion-back-button defaultHref="/retailer/dashboard"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Order Analytics</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding analytics-content">
+  <ion-refresher slot="fixed" (ionRefresh)="doRefresh($event)">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <div *ngIf="isLoading && !analyticsData" class="loading-container ion-text-center">
+    <ion-spinner name="crescent" color="primary"></ion-spinner>
+    <p>Loading analytics data...</p>
+  </div>
+
+  <div *ngIf="errorMessage && !isLoading" class="error-container ion-text-center">
+    <ion-icon name="warning-outline" color="danger" class="error-icon"></ion-icon>
+    <p>{{ errorMessage }}</p>
+    <ion-button (click)="loadInitialData()" expand="block" fill="outline" color="primary">
+      <ion-icon name="refresh-outline" slot="start"></ion-icon>
+      Retry
+    </ion-button>
+  </div>
+
+  <ng-container *ngIf="!isLoading && !errorMessage && analyticsData">
+    <ion-grid fixed>
+      <ion-row class="key-metrics-row">
+        <ion-col size="12" size-sm="6" size-md="4">
+          <ion-card class="metric-card">
+            <ion-card-header>
+              <ion-card-subtitle>Total Orders</ion-card-subtitle>
+              <ion-card-title>{{ analyticsData.totalOrders | number }}</ion-card-title>
+            </ion-card-header>
+          </ion-card>
+        </ion-col>
+        <ion-col size="12" size-sm="6" size-md="4">
+          <ion-card class="metric-card">
+            <ion-card-header>
+              <ion-card-subtitle>Total Revenue</ion-card-subtitle>
+              <ion-card-title>{{ analyticsData.totalRevenue | currency:'USD':'symbol':'1.2-2' }}</ion-card-title>
+            </ion-card-header>
+          </ion-card>
+        </ion-col>
+        <ion-col size="12" size-sm="12" size-md="4"> <ion-card class="metric-card">
+            <ion-card-header>
+              <ion-card-subtitle>Average Order Value</ion-card-subtitle>
+              <ion-card-title>{{ analyticsData.averageOrderValue | currency:'USD':'symbol':'1.2-2' }}</ion-card-title>
+            </ion-card-header>
+          </ion-card>
+        </ion-col>
+      </ion-row>
+    </ion-grid>
+
+    <ion-card class="data-section-card">
+      <ion-card-header>
+        <ion-card-title>Orders by Status</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-list lines="none" *ngIf="analyticsData.ordersByStatus && analyticsData.ordersByStatus.length > 0; else noStatusData">
+          <ion-item *ngFor="let statusInfo of analyticsData.ordersByStatus" [class]="getStatusClass(statusInfo.status)" class="status-item">
+            <ion-label> {{ statusInfo.status | titlecase }}
+            </ion-label>
+            <ion-note slot="end" class="status-count">{{ statusInfo.count }} ({{ statusInfo.percentage | number:'1.0-1' }}%)</ion-note>
+          </ion-item>
+        </ion-list>
+        <ng-template #noStatusData>
+          <p class="ion-text-center ion-padding-vertical">No order status data to display.</p>
+        </ng-template>
+        <!-- <div class="chart-container" *ngIf="salesByStatusChartData && salesByStatusChartData[0] && salesByStatusChartData[0].data.length > 0">
+          <canvas baseChart
+            [datasets]="salesByStatusChartData"
+            [labels]="salesByStatusChartLabels"
+            [options]="chartOptions"
+            [legend]="chartLegend"
+            [plugins]="chartPlugins"
+            chartType="doughnut">
+          </canvas>
+        </div> -->
+      </ion-card-content>
+    </ion-card>
+
+    <!--
+    <ion-card class="data-section-card">
+      <ion-card-header>
+        <ion-card-title>Sales Over Time</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="chart-container">
+           Placeholder for Sales Over Time Chart (e.g., Line Chart)
+           <p class="ion-text-center ion-padding-vertical">Sales over time chart will be displayed here.</p>
+        </div>
+      </ion-card-content>
+    </ion-card>
+    -->
+
+    <!--
+    <ion-card class="data-section-card">
+      <ion-card-header>
+        <ion-card-title>Top Selling Items/Services</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <p class="ion-text-center ion-padding-vertical">Top selling items data will be displayed here.</p>
+      </ion-card-content>
+    </ion-card>
+    -->
+
+  </ng-container>
+
+  <div *ngIf="!isLoading && !errorMessage && !analyticsData" class="empty-state ion-text-center ion-padding">
+    <ion-icon name="analytics-outline" class="empty-state-icon" color="medium"></ion-icon>
+    <h4>No Analytics Data</h4>
+    <p>Once you have orders, analytics will be shown here.</p>
+  </div>
+
+</ion-content>
+

@@ -1,0 +1,152 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+      <ion-back-button defaultHref="/customer/orders"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Order Details</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding order-detail-page-content">
+  <ion-refresher slot="fixed" (ionRefresh)="doRefresh($event)">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <div *ngIf="isLoading && !(orderData$ | async)" class="loading-container ion-text-center">
+    <ion-spinner name="crescent" color="primary"></ion-spinner>
+    <p>Loading order details...</p>
+  </div>
+
+  <div *ngIf="errorMessage && !isLoading" class="error-container ion-text-center">
+    <ion-icon name="alert-circle-outline" color="danger" class="error-icon"></ion-icon>
+    <p>{{ errorMessage }}</p>
+    <ion-button (click)="loadOrderDetails()" fill="outline" color="primary">
+      <ion-icon name="refresh-outline" slot="start"></ion-icon>
+      Try Again
+    </ion-button>
+  </div>
+
+  <ng-container *ngIf="orderData$ | async as orderDataResult; else noDataState">
+    <!-- Main content container, only renders if orderData$ has emitted a non-null value -->
+    <ng-container *ngIf="orderDataResult && orderDataResult.order; else noSpecificOrderData">
+
+      <!-- Order Summary Card -->
+      <ion-card class="order-summary-card">
+        <ion-card-header>
+          <ion-card-subtitle>Order #{{ orderDataResult.order.id?.substring(0, 8) }}</ion-card-subtitle>
+          <ion-card-title>
+            <ion-badge [color]="getStatusColor(orderDataResult.order.status)">
+              {{ orderDataResult.order.status | titlecase }}
+            </ion-badge>
+          </ion-card-title>
+          <p class="placed-on-date">Placed on: {{ formatDate(orderDataResult.order.createdAt) }}</p>
+        </ion-card-header>
+      </ion-card>
+
+      <!-- Submitted Form Data Card -->
+      <ion-card class="form-data-card" *ngIf="orderDataResult.order.formData && (orderDataResult.order.formData | keyvalue).length > 0">
+        <ion-card-header>
+          <ion-card-title>Submitted Details</ion-card-title>
+        </ion-card-header>
+        <ion-card-content>
+          <ion-list lines="none">
+            <ion-item *ngFor="let field of orderDataResult.order.formData | keyvalue">
+              <ion-label class="ion-text-wrap">
+                <h3>{{ field.key | titlecase }}</h3>
+                <p>{{ field.value }}</p>
+              </ion-label>
+            </ion-item>
+          </ion-list>
+        </ion-card-content>
+      </ion-card>
+
+      <!-- Attached Files Card -->
+      <ion-card class="attached-files-card" *ngIf="orderDataResult.order.fileUrls && orderDataResult.order.fileUrls.length > 0">
+        <ion-card-header>
+          <ion-card-title>Attached Files</ion-card-title>
+        </ion-card-header>
+        <ion-card-content>
+          <ion-list lines="none">
+            <ion-item *ngFor="let fileUrl of orderDataResult.order.fileUrls; let i = index" [href]="fileUrl" target="_blank" detail="true" button>
+              <ion-icon name="document-attach-outline" slot="start" color="primary"></ion-icon>
+              <ion-label>File {{ i + 1 }}</ion-label>
+              <ion-icon name="download-outline" slot="end" color="medium"></ion-icon>
+            </ion-item>
+          </ion-list>
+        </ion-card-content>
+      </ion-card>
+
+      <!-- Order Updates Card -->
+      <ion-card class="order-updates-card" *ngIf="orderDataResult.updates && orderDataResult.updates.length > 0; else noUpdates">
+        <ion-card-header>
+          <ion-card-title>Order History & Updates</ion-card-title>
+        </ion-card-header>
+        <ion-card-content>
+          <ion-list lines="full" class="timeline-list">
+            <ion-item *ngFor="let update of orderDataResult.updates" class="order-update-item">
+              <ion-icon
+                [name]="
+                  update.status === 'pending' ? 'ellipse-outline' :
+                  update.status === 'processing' ? 'sync-circle-outline' :
+                  update.status === 'shipped' ? 'airplane-outline' :
+                  update.status === 'delivered' ? 'checkmark-done-circle-outline' :
+                  update.status === 'cancelled' ? 'close-circle-outline' :
+                  'information-circle-outline'
+                "
+                [color]="getStatusColor(update.status)"
+                slot="start"
+              ></ion-icon>
+              <ion-label class="ion-text-wrap">
+                <h2>{{ update.status | titlecase }}</h2>
+                <p>{{ update.message }}</p>
+                <p class="update-timestamp"><small>{{ formatDate(update.createdAt) }}</small></p>
+              </ion-label>
+            </ion-item>
+          </ion-list>
+        </ion-card-content>
+      </ion-card>
+      <ng-template #noUpdates>
+        <ion-card class="order-updates-card" *ngIf="orderDataResult">
+          <ion-card-content>
+            <p class="ion-text-center ion-padding-vertical">No updates for this order yet.</p>
+          </ion-card-content>
+        </ion-card>
+      </ng-template>
+
+      <!-- Action Buttons -->
+      <div class="action-buttons ion-padding-top" *ngIf="orderDataResult.order.status !== 'cancelled' && orderDataResult.order.status !== 'delivered' && orderDataResult.order.status !== 'completed'">
+        <ion-button
+          expand="block"
+          color="danger"
+          fill="outline"
+          (click)="cancelOrder(orderDataResult.order)"
+          [disabled]="!canCancel(orderDataResult.order) || isCancelling"
+        >
+          <ion-spinner *ngIf="isCancelling" name="dots"></ion-spinner>
+          <span *ngIf="!isCancelling">Cancel Order</span>
+        </ion-button>
+        <div *ngIf="!canCancel(orderDataResult.order)" class="ion-text-center ion-padding-top cancellation-info">
+          <p><small>The cancellation period for this order has passed or it cannot be cancelled in its current state.</small></p>
+        </div>
+      </div>
+
+    </ng-container> <!-- This closes *ngIf="orderDataResult && orderDataResult.order" -->
+
+    <ng-template #noSpecificOrderData>
+      <div *ngIf="!isLoading && !errorMessage" class="ion-text-center ion-padding">
+        <ion-icon name="document-outline" class="empty-state-icon" color="medium"></ion-icon>
+        <h4>Order Not Found</h4>
+        <p>The requested order details could not be found.</p>
+      </div>
+    </ng-template>
+  </ng-container> <!-- This closes *ngIf="orderData$ | async as orderDataResult" -->
+
+  <ng-template #noDataState>
+    <div *ngIf="!isLoading && !errorMessage" class="ion-text-center ion-padding">
+      <ion-icon name="information-circle-outline" class="empty-state-icon" color="medium"></ion-icon>
+      <h4>No Data</h4>
+      <p>Order information is currently unavailable.</p>
+    </div>
+  </ng-template>
+</ion-content>

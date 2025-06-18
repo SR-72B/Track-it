@@ -1,0 +1,135 @@
+// src/app/communication/notifications/notifications.component.scss
+
+ion-content {
+  // Ensure --app-background is defined in your global variables.scss or theme
+  --background: var(--app-background, var(--ion-color-light, #f4f5f8)); // Added fallback
+}
+
+ion-list {
+  background: transparent;
+  padding: 0; // Removes default list padding if you want items to go edge-to-edge within ion-content padding
+}
+
+ion-item {
+  --padding-start: 16px;
+  --inner-padding-end: 16px;
+  margin-bottom: 8px;
+  border-radius: 12px;
+  --background: var(--ion-card-background, white); // Use a theme variable or fallback
+  cursor: pointer;
+  box-shadow: var(--card-shadow, 0 2px 4px rgba(0, 0, 0, 0.05)); // Use a theme variable or fallback
+
+  // Active (pressed) state for the item
+  &.item-interactive-disabled:hover, // Prevents hover when disabled
+  &.item-disabled:hover {
+    --background: var(--ion-card-background, white); // Keep original background when disabled
+  }
+
+  &:not(.item-interactive-disabled):not(.item-disabled):active {
+    --background: var(--ion-color-light-tint, #e9e9e9); // Slightly darker on press
+    transform: scale(0.99); // Subtle press effect
+    transition: transform 0.1s ease-out;
+  }
+}
+
+ion-icon[slot="start"] { // More specific to icons in the start slot
+  font-size: 24px; // This is a good default size
+  margin-right: 16px; // Consistent with Ionic defaults for items with icons
+  // Color is handled dynamically in the HTML: [color]="notification.read ? 'medium' : 'primary'"
+}
+
+// Styling for unread items based on class on ion-label
+// If you want the entire item background to change, the .unread class should be on ion-item in the HTML.
+// Example: <ion-item [class.unread]="!notification.read">
+ion-item.unread-item-background { // Use this class on ion-item in HTML if you want item background change
+  --background: rgba(var(--ion-color-primary-rgb, 56, 128, 255), 0.05); // Subtle primary tint
+  // The icon color is already handled dynamically in the HTML based on notification.read
+}
+
+ion-label {
+  h2 {
+    font-weight: 500; // Slightly less bold for read titles
+    margin-bottom: 4px;
+    font-size: 1em; // Relative to ion-item font size
+    color: var(--ion-text-color); // Default text color
+  }
+
+  p {
+    color: var(--ion-color-medium-shade, #737373); // Corrected CSS variable, added fallback
+    font-size: 0.9em;
+    // ion-text-wrap class in HTML will handle text wrapping
+  }
+}
+
+ion-label.unread { // Styles for the label when it has the .unread class
+  h2 {
+    font-weight: 600; // Bolder for unread titles
+    color: var(--ion-color-dark-shade, var(--ion-text-color)); // Ensure good contrast
+  }
+  // p within unread label can also be styled if needed:
+  // p {
+  //   color: var(--ion-color-dark-tint);
+  // }
+}
+
+ion-note[slot="end"] {
+  font-size: 0.8em;
+  // Color is dynamically set in HTML: [color]="notification.read ? 'medium' : 'dark'"
+}
+
+// Styles for the empty state message (when no notifications)
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 60vh; // Take up a good portion of the screen
+  color: var(--ion-color-medium-shade);
+
+  .empty-state-icon {
+    font-size: 4rem; // Larger icon for empty state
+    margin-bottom: 16px;
+  }
+
+  h4 {
+    font-size: 1.2rem;
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+}
+
+// Loading and Error container styles (copied from manage-subscription for consistency)
+.loading-container,
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  text-align: center;
+  padding: 20px;
+
+  ion-spinner {
+    margin-bottom: 16px;
+    width: 32px; // Adjusted from previous example to match HTML
+    height: 32px;
+  }
+
+  p {
+    color: var(--ion-color-medium-shade);
+    font-size: 1.1em;
+    margin-top: 8px;
+  }
+
+  .error-icon {
+    font-size: 3.5em;
+    margin-bottom: 8px;
+  }
+
+  ion-button {
+    margin-top: 20px;
+    --border-radius: 8px;
+  }
+}
+
+    

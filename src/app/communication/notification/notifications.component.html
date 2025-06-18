@@ -1,0 +1,73 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+    </ion-buttons>
+    <ion-title>Notifications</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding-top">
+  <ion-refresher slot="fixed" (ionRefresh)="doRefresh($event)">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <div *ngIf="isLoading && !(notifications$ | async)?.length" class="loading-container ion-text-center ion-padding">
+    <ion-spinner name="crescent" color="primary"></ion-spinner>
+    <p>Loading notifications...</p>
+  </div>
+
+  <div *ngIf="errorMessage && !isLoading" class="error-container ion-text-center ion-padding">
+    <ion-icon name="alert-circle-outline" color="danger" class="error-icon"></ion-icon>
+    <p>{{ errorMessage }}</p>
+    <ion-button (click)="loadNotifications()" fill="outline" color="primary">
+      <ion-icon name="refresh-outline" slot="start"></ion-icon>
+      Try Again
+    </ion-button>
+  </div>
+
+  <ng-container *ngIf="!isLoading || (notifications$ | async)?.length">
+    <ng-container *ngIf="notifications$ | async as notifications; else noDataOrError">
+      <ion-list *ngIf="notifications.length > 0; else noNotifications" lines="full">
+        <ion-item *ngFor="let notification of notifications" (click)="handleNotification(notification)" button detail="true">
+          <ion-icon
+            [name]="notification.icon || (
+              notification.type === 'message' ? 'chatbubble-outline' :
+              notification.type === 'call' ? 'videocam-outline' :
+              notification.type === 'order' ? 'cart-outline' :
+              notification.type === 'status' ? 'cube-outline' :
+              'notifications-outline'
+            )"
+            slot="start"
+            [color]="notification.read ? 'medium' : 'primary'"
+            aria-hidden="true"
+          ></ion-icon>
+          <ion-label [class.unread]="!notification.read">
+            <h2>{{ notification.title }}</h2>
+            <p class="ion-text-wrap">{{ notification.body }}</p>
+          </ion-label>
+          <ion-note slot="end" [color]="notification.read ? 'medium' : 'dark'">
+            {{ formatTime(notification.timestamp) }}
+          </ion-note>
+        </ion-item>
+      </ion-list>
+
+      <ng-template #noNotifications>
+        <div *ngIf="!errorMessage" class="empty-state ion-text-center ion-padding">
+          <ion-icon name="notifications-off-outline" class="empty-state-icon" color="medium"></ion-icon>
+          <h4>No Notifications Yet</h4>
+          <p>You're all caught up!</p>
+        </div>
+      </ng-template>
+    </ng-container>
+  </ng-container>
+
+  <ng-template #noDataOrError>
+    <!-- This block is primarily for the case where notifications$ might be null/undefined initially,
+         but the isLoading and errorMessage blocks above should generally cover these states. -->
+    <div *ngIf="!isLoading && !errorMessage" class="ion-text-center ion-padding">
+      <p>Could not load notifications at this time.</p>
+    </div>
+  </ng-template>
+
+</ion-content>

@@ -1,0 +1,115 @@
+/* src/app/auth/account-management/account-management.component.scss */
+
+// Error message styling
+.error-message {
+  font-size: 0.8rem;
+  margin-left: 16px;
+  margin-top: 5px;
+}
+
+// Card styling
+ion-card {
+  margin-bottom: 20px;
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+}
+
+ion-card-header {
+  padding-bottom: 12px;
+}
+
+ion-card-title {
+  font-weight: 600;
+  font-size: 18px;
+  color: var(--ion-color-dark);
+}
+
+ion-card-content {
+  padding-top: 0;
+}
+
+// Form styling
+form {
+  width: 100%;
+}
+
+ion-item {
+  --padding-start: 0;
+  --inner-padding-end: 0;
+  --background: transparent;
+  margin-bottom: 8px;
+}
+
+ion-input, ion-textarea {
+  --background: var(--ion-color-light);
+  --padding-start: 12px;
+  --padding-end: 12px;
+  --padding-top: 12px;
+  --padding-bottom: 12px;
+  --border-radius: 8px;
+  margin-top: 4px;
+}
+
+ion-label {
+  font-weight: 500;
+  color: var(--ion-color-dark);
+}
+
+ion-text[color="medium"] p {
+  font-size: 12px;
+  margin-top: 4px;
+  margin-bottom: 16px;
+}
+
+// Button styling
+ion-button {
+  --border-radius: 8px;
+  margin-top: 16px;
+  font-weight: 500;
+  height: 48px;
+}
+
+// Loading state
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 32px;
+}
+
+.loading-container ion-spinner {
+  margin-bottom: 16px;
+}
+
+// Animation
+.fade-in {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Media queries for responsive design
+@media (min-width: 768px) {
+  ion-card {
+    max-width: 600px;
+    margin: 24px auto;
+  }
+  
+  ion-button {
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+    display: block;
+  }
+}

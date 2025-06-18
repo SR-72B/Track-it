@@ -1,0 +1,142 @@
+// src/app/app.component.scss
+
+// Smooth transitions for a more polished feel
+$menu-transition-duration: 0.25s;
+$menu-transition-timing: ease-in-out;
+
+// Styles for the main app container (ion-app)
+// Removed empty ion-app {} ruleset
+
+// Styles for the side menu (ion-menu)
+ion-menu {
+  --width: 280px; // Slightly wider menu
+  --background: var(--ion-color-light); // Base background for the menu
+
+  // Optional: Add a subtle gradient or texture for depth
+  // ion-content {
+  //   --background: linear-gradient(135deg, var(--ion-color-light-tint) 0%, var(--ion-color-light-shade) 100%);
+  // }
+
+  ion-header {
+    ion-toolbar {
+      --background: var(--ion-color-primary); // Primary color for the menu header
+      --color: var(--ion-color-primary-contrast); // Text color for the header
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1); // Subtle shadow for the header
+    }
+  }
+
+  ion-content {
+    // Background for the menu content area
+    // If not using a gradient, a solid color from your theme:
+    --background: var(--ion-color-light-tint); // A very light shade for the menu body
+    // Or, keep it simple:
+    // --background: #f9f9fb; // A custom light grey
+  }
+
+  ion-list-header {
+    font-size: 1.2em; // Slightly larger header text
+    font-weight: 700; // Bolder
+    color: var(--ion-color-primary-shade); // Darker shade of primary
+    padding-top: 20px;
+    padding-bottom: 10px;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--ion-color-step-200, #e0e0e0); // Subtle separator
+    margin-bottom: 8px;
+  }
+
+  ion-note {
+    display: block;
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-bottom: 20px; // More space after the note
+    font-size: 0.9em;
+    color: var(--ion-color-medium-shade);
+  }
+
+  ion-list#inbox-list {
+    padding-top: 0;
+  }
+
+  ion-menu-toggle {
+    ion-item {
+      --padding-start: 18px; // Slightly more padding
+      --padding-end: 18px;
+      --inner-padding-end: 18px;
+      font-size: 1em; // Standardize font size
+      color: var(--ion-color-dark);
+      --border-radius: 8px; // Rounded corners for items
+      margin: 4px 10px; // Add some margin around items
+      transition: background-color $menu-transition-duration $menu-transition-timing,
+                  color $menu-transition-duration $menu-transition-timing;
+
+      ion-icon {
+        font-size: 1.4em;
+        color: var(--ion-color-medium); // Slightly darker default icon color
+        margin-inline-end: 16px; // More space for icon
+        transition: color $menu-transition-duration $menu-transition-timing;
+      }
+
+      ion-label {
+        font-weight: 400; // Regular weight for non-selected
+        transition: color $menu-transition-duration $menu-transition-timing,
+                    font-weight $menu-transition-duration $menu-transition-timing;
+      }
+
+      // Hover effect for non-selected items
+      &:not(.selected):hover {
+        --background: var(--ion-color-light-shade); // Subtle hover background
+        ion-icon {
+          color: var(--ion-color-primary-tint);
+        }
+        ion-label {
+          color: var(--ion-color-primary);
+        }
+      }
+
+      // Selected item style
+      &.selected {
+        --background: var(--ion-color-primary); // Primary background for selected
+        // Or a more subtle approach:
+        // --background: rgba(var(--ion-color-primary-rgb), 0.1);
+        // border-left: 4px solid var(--ion-color-primary);
+        // --padding-start: 14px; // Adjust if using border-left
+
+        ion-icon {
+          color: var(--ion-color-primary-contrast); // White icon on primary background
+        }
+        ion-label {
+          color: var(--ion-color-primary-contrast); // White text on primary background
+          font-weight: 600; // Bolder for selected
+        }
+      }
+    }
+  }
+
+  // Styling for the logout button item
+  ion-item.logout-item { // Added a class for more specific targeting
+    margin-top: 24px;
+    border-top: 1px solid var(--ion-color-step-250, #dcdcdc);
+    --background: transparent; // Ensure no other background interferes
+
+    ion-icon {
+      color: var(--ion-color-danger); // Use danger color for icon
+    }
+    ion-label {
+      color: var(--ion-color-danger); // Use danger color for text
+      font-weight: 500;
+    }
+
+    &:hover {
+      --background: rgba(var(--ion-color-danger-rgb), 0.1); // Subtle danger hover
+    }
+  }
+}
+
+// Styles for the main content area (ion-router-outlet)
+// Removed empty ion-router-outlet#main-content {} ruleset
+
+// Ensure split pane works well
+ion-split-pane {
+  --side-min-width: 260px;
+  --side-max-width: 300px;
+}

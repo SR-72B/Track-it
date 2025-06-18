@@ -1,0 +1,485 @@
+// src/app/customer/order-detail/customer-order-detail.component.scss
+@use "sass:math"; // Add this for math.div()
+@use "sass:color"; // Add this for color.adjust()
+
+// Main styles for customer order detail page
+
+// Variables
+$primary-color: #3f51b5;
+$secondary-color: #f5f5f5;
+$border-color: #e0e0e0;
+$success-color: #4caf50;
+$warning-color: #ff9800;
+$danger-color: #f44336;
+$text-color: #333333;
+$text-light: #757575;
+$spacing-unit: 16px;
+$border-radius: 4px;
+$box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+// Mixins
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+}
+
+@mixin status-badge($color-value) { // Renamed parameter to avoid conflict with 'color' module
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  background-color: rgba($color-value, 0.1);
+  color: $color-value;
+  border: 1px solid rgba($color-value, 0.2);
+}
+
+// Container
+.order-detail-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: $spacing-unit;
+  
+  @media (max-width: 768px) {
+    padding: math.div($spacing-unit, 2); // Fixed division
+  }
+}
+
+// Order Header
+.order-header {
+  @include flex-center;
+  justify-content: space-between;
+  margin-bottom: $spacing-unit * 2;
+  padding-bottom: $spacing-unit;
+  border-bottom: 1px solid $border-color;
+  
+  &__title {
+    font-size: 24px;
+    font-weight: 600;
+    
+    @media (max-width: 768px) {
+      font-size: 20px;
+    }
+  }
+  
+  &__order-number {
+    color: $text-light;
+    font-size: 14px;
+    margin-top: 4px;
+  }
+  
+  &__actions {
+    @include flex-center;
+    
+    .btn {
+      margin-left: math.div($spacing-unit, 2); // Fixed division
+    }
+  }
+}
+
+// Order Summary
+.order-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-unit;
+  margin-bottom: $spacing-unit * 2;
+  
+  &__card {
+    flex: 1;
+    min-width: 250px;
+    padding: $spacing-unit;
+    background-color: $secondary-color;
+    border-radius: $border-radius;
+    box-shadow: $box-shadow;
+    
+    &-title {
+      font-size: 14px;
+      color: $text-light;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    &-content {
+      font-size: 16px;
+      font-weight: 500;
+      color: $text-color;
+    }
+  }
+}
+
+// Order Status
+.order-status {
+  &__indicator {
+    &--processing {
+      @include status-badge($primary-color);
+    }
+    
+    &--shipped {
+      @include status-badge($warning-color);
+    }
+    
+    &--delivered {
+      @include status-badge($success-color);
+    }
+    
+    &--cancelled {
+      @include status-badge($danger-color);
+    }
+  }
+  
+  &__timeline {
+    margin: $spacing-unit * 2 0;
+    position: relative;
+    padding-left: $spacing-unit * 2;
+    
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 8px;
+      width: 2px;
+      background-color: $border-color;
+    }
+    
+    &-item {
+      position: relative;
+      margin-bottom: $spacing-unit;
+      
+      &::before {
+        content: '';
+        position: absolute;
+        left: -$spacing-unit * 2 + 4px; // SCSS allows calculations here
+        top: 4px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background-color: $primary-color;
+        border: 2px solid white;
+      }
+      
+      &:last-child {
+        margin-bottom: 0;
+      }
+      
+      &-date {
+        font-size: 12px;
+        color: $text-light;
+        margin-bottom: 4px;
+      }
+      
+      &-title {
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+      
+      &-desc {
+        font-size: 14px;
+        color: $text-light;
+      }
+    }
+  }
+}
+
+// Customer Information
+.customer-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-unit * 2;
+  margin-bottom: $spacing-unit * 2;
+  
+  &__section {
+    flex: 1;
+    min-width: 250px;
+    
+    &-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: $spacing-unit;
+      padding-bottom: 8px;
+      border-bottom: 1px solid $border-color;
+    }
+    
+    &-content {
+      font-size: 14px;
+      line-height: 1.5;
+      
+      p {
+        margin-bottom: 8px;
+      }
+    }
+  }
+}
+
+// Order Items
+.order-items {
+  margin-bottom: $spacing-unit * 2;
+  
+  &__title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: $spacing-unit;
+  }
+  
+  &__table {
+    width: 100%;
+    border-collapse: collapse;
+    
+    th {
+      text-align: left;
+      padding: $spacing-unit;
+      background-color: $secondary-color;
+      border-bottom: 1px solid $border-color;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    
+    td {
+      padding: $spacing-unit;
+      border-bottom: 1px solid $border-color;
+      font-size: 14px;
+      
+      &:last-child {
+        text-align: right;
+      }
+    }
+    
+    @media (max-width: 768px) {
+      display: block;
+      
+      thead {
+        display: none;
+      }
+      
+      tbody {
+        display: block;
+      }
+      
+      tr {
+        display: block;
+        margin-bottom: $spacing-unit;
+        border: 1px solid $border-color;
+        border-radius: $border-radius;
+      }
+      
+      td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: math.div($spacing-unit, 2) $spacing-unit; // Fixed division
+        text-align: right;
+        
+        &:before {
+          content: attr(data-label);
+          font-weight: 600;
+          margin-right: $spacing-unit;
+        }
+        
+        &:last-child {
+          border-bottom: none;
+        }
+      }
+    }
+  }
+}
+
+// Product Item
+.product-item {
+  @include flex-center;
+  
+  &__image {
+    width: 60px;
+    height: 60px;
+    border-radius: $border-radius;
+    margin-right: $spacing-unit;
+    object-fit: cover;
+    background-color: $secondary-color;
+  }
+  
+  &__details {
+    flex: 1;
+    
+    &-name {
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    
+    &-sku {
+      font-size: 12px;
+      color: $text-light;
+    }
+    
+    &-options {
+      font-size: 12px;
+      margin-top: 4px;
+      
+      span {
+        color: $text-light;
+        
+        & + span:before {
+          content: '• ';
+          margin: 0 4px;
+        }
+      }
+    }
+  }
+}
+
+// Order Totals
+.order-totals {
+  margin-top: $spacing-unit * 2;
+  border-top: 1px solid $border-color;
+  padding-top: $spacing-unit;
+  
+  &__row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    font-size: 14px;
+    
+    &--total {
+      font-size: 18px;
+      font-weight: 600;
+      padding-top: $spacing-unit;
+      margin-top: 8px;
+      border-top: 1px solid $border-color;
+    }
+    
+    &-label {
+      color: $text-light;
+    }
+    
+    &-value {
+      font-weight: 500;
+    }
+  }
+}
+
+// Payment Information
+.payment-info {
+  margin-top: $spacing-unit * 2;
+  
+  &__title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: $spacing-unit;
+  }
+  
+  &__card {
+    @include flex-center;
+    padding: $spacing-unit;
+    background-color: $secondary-color;
+    border-radius: $border-radius;
+    box-shadow: $box-shadow;
+    
+    &-icon {
+      width: 40px;
+      height: 25px;
+      margin-right: $spacing-unit;
+      background-color: #f0f0f0; // Consider making this a variable if used elsewhere
+      border-radius: 4px;
+    }
+    
+    &-details {
+      flex: 1;
+      
+      &-type {
+        font-weight: 500;
+        margin-bottom: 4px;
+      }
+      
+      &-number {
+        font-size: 14px;
+        color: $text-light;
+      }
+    }
+    
+    &-amount {
+      font-weight: 600;
+    }
+  }
+}
+
+// Buttons and Actions
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: $border-radius;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &--primary {
+    background-color: $primary-color;
+    color: white;
+    
+    &:hover {
+      background-color: color.adjust($primary-color, $lightness: -10%); // Fixed darken
+    }
+  }
+  
+  &--secondary {
+    background-color: white;
+    color: $text-color;
+    border: 1px solid $border-color;
+    
+    &:hover {
+      background-color: $secondary-color;
+    }
+  }
+  
+  &--success {
+    background-color: $success-color;
+    color: white;
+    
+    &:hover {
+      background-color: color.adjust($success-color, $lightness: -10%); // Fixed darken
+    }
+  }
+  
+  &--danger {
+    background-color: $danger-color;
+    color: white;
+    
+    &:hover {
+      background-color: color.adjust($danger-color, $lightness: -10%); // Fixed darken
+    }
+  }
+  
+  &__icon {
+    margin-right: 8px;
+  }
+}
+
+// Print Styles
+@media print {
+  .order-detail-container {
+    padding: 0;
+    max-width: 100%;
+  }
+  
+  .order-header__actions,
+  .btn {
+    display: none;
+  }
+  
+  .order-status__timeline::before {
+    background-color: #999; // Darker for print clarity
+  }
+  
+  .order-items__table th {
+    background-color: #f0f0f0; // Lighter grey for print
+  }
+  
+  .order-summary__card,
+  .payment-info__card {
+    box-shadow: none;
+    border: 1px solid #ccc; // Clearer border for print
+  }
+}

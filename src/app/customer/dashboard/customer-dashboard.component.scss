@@ -1,0 +1,152 @@
+/* Customer Dashboard Styles */
+.welcome-card {
+  background: var(--ion-color-primary);
+  color: white;
+  border-radius: 0 0 16px 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.welcome-card h1 {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.welcome-card p {
+  margin: 0;
+  opacity: 0.9;
+  font-size: 16px;
+}
+
+.stats-container {
+  margin-bottom: 24px;
+}
+
+.stats-container h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  padding: 0 16px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  padding: 0 16px;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  box-shadow: var(--card-shadow);
+  transition: transform 0.2s ease;
+}
+
+.stat-card:active {
+  transform: scale(0.98);
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ion-color-primary);
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: var(--ion-color-medium);
+}
+
+ion-card {
+  margin: 16px;
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+}
+
+ion-card-header {
+  padding-bottom: 8px;
+}
+
+ion-card-title {
+  font-size: 18px;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+ion-item {
+  --padding-start: 0;
+  --inner-padding-end: 0;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+ion-item:active {
+  --background: var(--ion-color-light);
+}
+
+ion-item ion-label h2 {
+  font-weight: 600;
+  margin-bottom: 4px;
+  font-size: 16px;
+}
+
+ion-item ion-label h3 {
+  font-size: 14px;
+  color: var(--ion-color-dark);
+}
+
+ion-item ion-label p {
+  font-size: 12px;
+  color: var(--ion-color-medium);
+}
+
+ion-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+/* Animation for items */
+ion-item {
+  animation: fadeInUp 0.3s ease backwards;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+ion-item:nth-child(1) { animation-delay: 0.05s; }
+ion-item:nth-child(2) { animation-delay: 0.1s; }
+ion-item:nth-child(3) { animation-delay: 0.15s; }
+ion-item:nth-child(4) { animation-delay: 0.2s; }
+ion-item:nth-child(5) { animation-delay: 0.25s; }
+
+/* Media queries for responsive design */
+@media (min-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  
+  ion-card {
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
