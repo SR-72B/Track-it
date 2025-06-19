@@ -53,7 +53,7 @@
           <ion-list lines="none">
             <ion-item *ngFor="let field of orderDataResult.order.formData | keyvalue">
               <ion-label class="ion-text-wrap">
-                <h3>{{ field.key | titlecase }}</h3>
+                <h3>{{ (field.key as string) | titlecase }}</h3>
                 <p>{{ field.value }}</p>
               </ion-label>
             </ion-item>

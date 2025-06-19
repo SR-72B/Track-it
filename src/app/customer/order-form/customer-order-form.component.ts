@@ -1,19 +1,19 @@
 // src/app/customer/order-form/customer-order-form.component.ts
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core'; // Added ChangeDetectorRef
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { FormBuilder, FormGroup, FormControl, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, FormControl, Validators, ReactiveFormsModule, FormArray } from '@angular/forms';
 import { LoadingController, AlertController, ToastController, IonicModule } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 
 import { CustomerOrderService } from '../order/customer-order.service';
-import { OrderForm, FormField } from '../../retailer/form-builder/form-builder.service'; // Ensure FormField is exported
+import { OrderForm, FormField } from '../../retailer/form-builder/form-builder.service';
 import { Observable, Subscription, firstValueFrom, of } from 'rxjs';
-import { catchError, finalize } from 'rxjs/operators'; // Removed unused 'tap', 'filter'
+import { catchError, finalize } from 'rxjs/operators';
 
 @Component({
-  selector: 'app-customer-order-form', // Or 'app-place-order' if that's the intended selector
-  templateUrl: './customer-order-form.component.html', // Or './place-order.component.html'
-  styleUrls: ['./customer-order-form.component.scss'],   // Or './place-order.component.scss'
+  selector: 'app-customer-order-form',
+  templateUrl: './customer-order-form.component.html',
+  styleUrls: ['./customer-order-form.component.scss'],
   standalone: true,
   imports: [
     CommonModule,
@@ -26,6 +26,7 @@ export class CustomerOrderFormComponent implements OnInit, OnDestroy {
   formId: string | null = null;
   orderForm: OrderForm | undefined;
   dynamicForm: FormGroup;
+  fields: FormArray; // Added missing fields property
   selectedFiles: File[] = [];
   isLoading = true;
   isSubmitting = false;
@@ -41,9 +42,10 @@ export class CustomerOrderFormComponent implements OnInit, OnDestroy {
     private loadingController: LoadingController,
     private alertController: AlertController,
     private toastController: ToastController,
-    private cdr: ChangeDetectorRef // Injected ChangeDetectorRef
+    private cdr: ChangeDetectorRef
   ) {
     this.dynamicForm = this.fb.group({});
+    this.fields = this.fb.array([]); // Initialize fields FormArray
   }
 
   ngOnInit() {
@@ -51,18 +53,17 @@ export class CustomerOrderFormComponent implements OnInit, OnDestroy {
       const id = params['id'];
       if (id) {
         this.formId = id;
-        this.loadOrderFormDefinition(); // Renamed for clarity
+        this.loadOrderFormDefinition();
       } else {
         this.isLoading = false;
         this.errorMessage = 'Form ID is missing. Cannot load form.';
         this.showToast(this.errorMessage, 'danger');
         this.cdr.detectChanges();
-        // Optionally, navigate away: this.router.navigate(['/customer/forms']);
       }
     });
   }
 
-  async loadOrderFormDefinition() { // Renamed for clarity
+  async loadOrderFormDefinition() {
     if (!this.formId) {
       this.isLoading = false;
       this.errorMessage = 'Cannot load form: Form ID is not available.';
@@ -108,15 +109,16 @@ export class CustomerOrderFormComponent implements OnInit, OnDestroy {
     } finally {
       this.isLoading = false;
       await loading.dismiss().catch(e => console.warn('Error dismissing loading:', e));
-      this.cdr.detectChanges(); // Ensure UI updates
+      this.cdr.detectChanges();
     }
   }
 
   createDynamicForm(form: OrderForm) {
     const formControls: { [key: string]: FormControl } = {};
+    const fieldsArray: FormGroup[] = [];
     
-    // Add PO field (Make this conditional based on form settings if needed)
-    formControls['purchaseOrder'] = new FormControl(''); // Default value, no validators unless specified by form
+    // Add PO field
+    formControls['purchaseOrder'] = new FormControl('');
     
     if (form && form.fields) {
       form.fields.forEach((field: FormField) => {
@@ -126,33 +128,40 @@ export class CustomerOrderFormComponent implements OnInit, OnDestroy {
           validators.push(Validators.required);
         }
         if (field.type === 'email') {
-            validators.push(Validators.email);
+          validators.push(Validators.email);
         }
-        // Add other validators based on field properties (e.g., minLength, pattern)
+        
         formControls[controlName] = new FormControl(field.defaultValue || '', validators);
+        
+        // Add to fields array for template iteration
+        const fieldGroup = this.fb.group({
+          [controlName]: formControls[controlName]
+        });
+        fieldsArray.push(fieldGroup);
       });
     }
+    
     this.dynamicForm = this.fb.group(formControls);
+    this.fields = this.fb.array(fieldsArray);
   }
 
   onFileSelected(event: any) {
     const files: FileList = event.target.files;
     if (!this.orderForm) {
-        this.showToast('Form definition not loaded, cannot process files.', 'warning');
-        if (event.target) event.target.value = null;
-        return;
+      this.showToast('Form definition not loaded, cannot process files.', 'warning');
+      if (event.target) event.target.value = null;
+      return;
     }
     if (!this.orderForm.allowFileUpload) {
-        this.showToast('File uploads are not permitted for this form.', 'warning');
-        if (event.target) event.target.value = null;
-        return;
+      this.showToast('File uploads are not permitted for this form.', 'warning');
+      if (event.target) event.target.value = null;
+      return;
     }
 
     if (files) {
-      // Assuming orderForm.allowedFileTypes stores MIME types (e.g., "image/png", "application/pdf")
       const allowedMimeTypes = this.orderForm.allowedFileTypes || [];
-      const maxFiles = this.orderForm.maxFilesAllowed || 1; // Use from form definition or default
-      const maxFileSizeMB = 10; // Example: Max 10MB per file - make this configurable if needed
+      const maxFiles = this.orderForm.maxFilesAllowed || 1;
+      const maxFileSizeMB = 10;
 
       if (this.selectedFiles.length >= maxFiles) {
         this.showToast(`You have already selected the maximum of ${maxFiles} file(s).`, 'warning');
@@ -168,11 +177,10 @@ export class CustomerOrderFormComponent implements OnInit, OnDestroy {
         const file = files[i];
 
         if (file.size > maxFileSizeMB * 1024 * 1024) {
-            this.showToast(`File "${file.name}" is too large (max ${maxFileSizeMB}MB).`, 'warning');
-            continue;
+          this.showToast(`File "${file.name}" is too large (max ${maxFileSizeMB}MB).`, 'warning');
+          continue;
         }
         
-        // Validate against MIME types
         if (allowedMimeTypes.length > 0 && !allowedMimeTypes.includes(file.type)) {
           this.showToast(`File type "${file.type || 'unknown'}" for "${file.name}" is not allowed. Allowed: ${allowedMimeTypes.join(', ')}`, 'warning');
           continue;
@@ -183,7 +191,7 @@ export class CustomerOrderFormComponent implements OnInit, OnDestroy {
     if (event.target) {
       event.target.value = null;
     }
-    this.cdr.detectChanges(); // Update view for selected files list
+    this.cdr.detectChanges();
   }
 
   removeFile(index: number) {
@@ -202,8 +210,8 @@ export class CustomerOrderFormComponent implements OnInit, OnDestroy {
       return;
     }
     if (!this.formId) {
-        this.showErrorAlert('Submission Error', 'Form ID is missing. Cannot submit order.');
-        return;
+      this.showErrorAlert('Submission Error', 'Form ID is missing. Cannot submit order.');
+      return;
     }
 
     this.isSubmitting = true;
@@ -223,9 +231,7 @@ export class CustomerOrderFormComponent implements OnInit, OnDestroy {
       
       this.selectedFiles = [];
       this.dynamicForm.reset();
-      // Re-initialize form with default values if needed, or clear it.
-      // this.createDynamicForm(this.orderForm); // To reset with defaults
-      this.isSubmitting = false; // Set before dismissing loader
+      this.isSubmitting = false;
       await loading.dismiss();
 
       const alert = await this.alertController.create({
@@ -236,12 +242,12 @@ export class CustomerOrderFormComponent implements OnInit, OnDestroy {
           {
             text: 'View My Orders',
             handler: () => {
-              this.router.navigate(['/customer/orders']); // Navigate to order list
+              this.router.navigate(['/customer/orders']);
             }
           },
           {
             text: 'Place Another Order',
-            role: 'cancel', // Or a handler to navigate to forms list
+            role: 'cancel',
             handler: () => {
               this.router.navigate(['/customer/forms']);
             }
@@ -249,14 +255,13 @@ export class CustomerOrderFormComponent implements OnInit, OnDestroy {
         ]
       });
       await alert.present();
-
     } catch (error: any) {
       this.isSubmitting = false;
       await loading.dismiss().catch(e => console.warn('Error dismissing submit loader:', e));
       this.showErrorAlert('Order Submission Failed', error.message || 'An unknown error occurred.');
     } finally {
-        this.isSubmitting = false; // Ensure it's always reset
-        this.cdr.detectChanges();
+      this.isSubmitting = false;
+      this.cdr.detectChanges();
     }
   }
 
@@ -281,9 +286,9 @@ export class CustomerOrderFormComponent implements OnInit, OnDestroy {
 
   async showErrorAlert(header: string, message: string) {
     const alert = await this.alertController.create({
-        header: header,
-        message: message,
-        buttons: ['OK']
+      header: header,
+      message: message,
+      buttons: ['OK']
     });
     await alert.present();
   }

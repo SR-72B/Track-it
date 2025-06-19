@@ -1,12 +1,12 @@
 // src/app/customer/order-detail/customer-order-detail.component.ts
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { CommonModule, CurrencyPipe } from '@angular/common'; // Added CurrencyPipe for template
+import { CommonModule } from '@angular/common'; // Removed CurrencyPipe import as it should not be in imports array
 import { AlertController, LoadingController, ToastController, IonicModule } from '@ionic/angular';
 import { Observable, Subscription, firstValueFrom, of } from 'rxjs';
 import { finalize, catchError, tap } from 'rxjs/operators';
 
-import { Order, OrderUpdate } from '../../retailer/order-management/order.service'; // Ensure path is correct
+import { Order, OrderUpdate } from '../../retailer/order-management/order.service';
 import { CustomerOrderService } from '../order/customer-order.service';
 
 @Component({
@@ -17,8 +17,7 @@ import { CustomerOrderService } from '../order/customer-order.service';
   imports: [
     CommonModule,
     IonicModule,
-    RouterModule,
-    CurrencyPipe
+    RouterModule
   ]
 })
 export class CustomerOrderDetailComponent implements OnInit, OnDestroy {

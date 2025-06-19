@@ -1,7 +1,8 @@
 <ion-header>
   <ion-toolbar color="primary">
     <ion-buttons slot="start">
-      <ion-menu-button></ion-menu-button> <ion-back-button defaultHref="/customer/orders"></ion-back-button>
+      <ion-menu-button></ion-menu-button>
+      <ion-back-button defaultHref="/customer/orders"></ion-back-button>
     </ion-buttons>
     <ion-title>Order Tracking</ion-title>
   </ion-toolbar>
@@ -26,12 +27,15 @@
     </ion-button>
   </div>
 
-  <ng-container *ngIf="!isLoading || (order$ | async)"> <ng-container *ngIf="order$ | async as order; else noOrderData">
-      <div *ngIf="order"> <div class="order-header ion-text-center ion-margin-bottom">
+  <ng-container *ngIf="!isLoading || (order$ | async)">
+    <ng-container *ngIf="order$ | async as order; else noOrderData">
+      <div *ngIf="order">
+        <div class="order-header ion-text-center ion-margin-bottom">
           <h1>Order #{{ order.id?.substring(0, 8) }}</h1>
           <p>Placed on {{ formatDate(order.createdAt) }}</p>
           <div class="order-status-badge" [ngClass]="getStatusClass(order.status)">
-            {{ order.status | titlecase }} </div>
+            {{ order.status | titlecase }}
+          </div>
         </div>
 
         <div class="tracking-container" *ngIf="order.status !== 'cancelled' && order.status !== 'failed'">
@@ -46,12 +50,12 @@
               [ngClass]="{
                 'active': i <= currentStepIndex,
                 'current': i === currentStepIndex && order.status !== 'delivered',
-                'completed': i < currentStepIndex || (order.status === 'delivered' && i === statusSteps.length -1)
+                'completed': i < currentStepIndex || (order.status === 'delivered' && i === statusSteps.length - 1)
               }"
             >
               <div class="step-indicator">
-                <ion-icon *ngIf="i < currentStepIndex || (order.status === 'delivered' && i === statusSteps.length -1)" name="checkmark-circle-outline"></ion-icon>
-                <span *ngIf="!(i < currentStepIndex || (order.status === 'delivered' && i === statusSteps.length -1))">{{ i + 1 }}</span>
+                <ion-icon *ngIf="i < currentStepIndex || (order.status === 'delivered' && i === statusSteps.length - 1)" name="checkmark-circle-outline"></ion-icon>
+                <span *ngIf="!(i < currentStepIndex || (order.status === 'delivered' && i === statusSteps.length - 1))">{{ i + 1 }}</span>
               </div>
               <div class="step-label">{{ step.label }}</div>
             </div>
@@ -62,12 +66,12 @@
           <ion-icon name="close-circle-outline" color="danger" class="status-icon-large"></ion-icon>
           <h2>Order Cancelled</h2>
         </div>
-         <div class="failed-status ion-text-center ion-padding" *ngIf="order.status === 'failed'">
+
+        <div class="failed-status ion-text-center ion-padding" *ngIf="order.status === 'failed'">
           <ion-icon name="alert-circle-outline" color="danger" class="status-icon-large"></ion-icon>
           <h2>Order Processing Failed</h2>
           <p>We encountered an issue with your order. Please contact support.</p>
         </div>
-
 
         <ion-card class="order-updates-card ion-margin-top">
           <ion-card-header>
@@ -119,7 +123,7 @@
                 </ion-label>
               </ion-item>
             </ion-list>
-             <div *ngIf="order.fileUrls && order.fileUrls.length > 0" class="uploaded-files ion-padding-top">
+            <div *ngIf="order.fileUrls && order.fileUrls.length > 0" class="uploaded-files ion-padding-top">
               <h4>Uploaded Files</h4>
               <ion-list lines="none">
                 <ion-item *ngFor="let fileUrl of order.fileUrls; let i = index" [href]="fileUrl" target="_blank" detail="true" button>
@@ -132,7 +136,8 @@
           </ion-card-content>
         </ion-card>
 
-      </div> </ng-container>
+      </div>
+    </ng-container>
   </ng-container>
 
   <ng-template #noOrderData>
@@ -144,4 +149,3 @@
   </ng-template>
 
 </ion-content>
-

@@ -1,11 +1,11 @@
 // src/app/retailer/order-detail/order-detail.component.ts
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, TemplateRef, ViewChild } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AlertController, LoadingController, ToastController, IonicModule } from '@ionic/angular';
 import { Observable, Subscription, of, firstValueFrom } from 'rxjs';
-import { catchError, finalize, tap, filter } from 'rxjs/operators'; // Ensure filter is imported
+import { catchError, finalize, tap, filter } from 'rxjs/operators';
 import { OrderService, Order, OrderUpdate } from '../order-management/order.service';
 
 @Component({
@@ -21,13 +21,19 @@ import { OrderService, Order, OrderUpdate } from '../order-management/order.serv
   ]
 })
 export class OrderDetailComponent implements OnInit, OnDestroy {
+  @ViewChild('loadingOrErrorTemplate', { static: true }) loadingOrErrorTemplate!: TemplateRef<any>;
+  
   orderId: string | null = null;
   orderData$: Observable<{order: Order, updates: OrderUpdate[]} | null> = of(null);
   updateForm: FormGroup;
-  isSubmittingUpdate = false; // Correct property name
-  isCancellingOrder = false; // This is the correct property name used in the component
+  isSubmittingUpdate = false;
+  isCancellingOrder = false;
   isLoading = true;
   errorMessage: string | null = null;
+  
+  // Added missing properties referenced in template
+  update2: any = null;
+  orderDataResult2: any = null;
 
   statuses = [
     { value: 'pending', label: 'Pending' },
@@ -38,7 +44,6 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
   ];
 
   private routeSubscription: Subscription | undefined;
-  // orderDataSubscription is not strictly needed if primarily using async pipe and firstValueFrom for actions
 
   constructor(
     private route: ActivatedRoute,
@@ -84,16 +89,18 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
     let loader: HTMLIonLoadingElement | undefined;
 
     if (!refresherEvent) {
-        loader = await this.loadingController.create({ message: 'Loading order details...' });
-        await loader.present();
+      loader = await this.loadingController.create({ message: 'Loading order details...' });
+      await loader.present();
     }
 
     this.orderData$ = this.orderService.getOrderWithUpdates(this.orderId).pipe(
       tap(data => {
         if (data && data.order) {
-          // Pre-fill logic if needed
+          // Store data for template references
+          this.orderDataResult2 = data;
+          this.update2 = data.updates && data.updates.length > 0 ? data.updates[0] : null;
         } else if (!data && !this.errorMessage) {
-            this.errorMessage = 'Order not found.';
+          this.errorMessage = 'Order not found.';
         }
         this.cdr.detectChanges();
       }),
@@ -139,26 +146,14 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Add the missing canCancel method
   public canCancel(order: Order | undefined | null): boolean {
     if (!order) return false;
     if (['cancelled', 'delivered', 'completed'].includes(order.status)) {
       return false;
     }
-    // Assuming a similar logic to CustomerOrderDetailComponent or your business rules
-    // For example, if there's a cancellationPolicy.cancellationWindowHours on the form used for the order
-    // This is a placeholder, adapt it to your actual cancellation logic for retailers
-    // For now, let's assume retailers can cancel 'pending' or 'processing' orders.
     if (order.status === 'pending' || order.status === 'processing') {
-        // Add more specific logic if available, e.g., based on time elapsed or form's policy
-        return true;
+      return true;
     }
-    // If no specific retailer cancellation logic is defined yet,
-    // you might want to return false or a more lenient true based on requirements.
-    // For demonstration, allowing cancellation if not shipped, delivered, or cancelled.
-    // return !['shipped', 'delivered', 'cancelled', 'completed'].includes(order.status);
-
-    // Defaulting to a simple check for now, adjust as per your business logic
     return order.status === 'pending';
   }
 
@@ -169,8 +164,8 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
       return;
     }
     if (!this.orderId) {
-        this.showToast('Order ID is missing. Cannot update.', 'danger');
-        return;
+      this.showToast('Order ID is missing. Cannot update.', 'danger');
+      return;
     }
 
     this.isSubmittingUpdate = true;
@@ -204,29 +199,29 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
     }
   }
 
-  async confirmCancelOrder() { // Correct method name
+  async confirmCancelOrder() {
     let currentOrder: Order | undefined;
     try {
-        const orderData = await firstValueFrom(
-            this.orderData$.pipe(
-                filter((data): data is { order: Order; updates: OrderUpdate[] } => !!data && !!data.order)
-            )
-        );
-        currentOrder = orderData.order;
+      const orderData = await firstValueFrom(
+        this.orderData$.pipe(
+          filter((data): data is { order: Order; updates: OrderUpdate[] } => !!data && !!data.order)
+        )
+      );
+      currentOrder = orderData.order;
     } catch (error) {
-        console.error("Error fetching current order for cancellation:", error);
-        this.showToast('Order details not loaded. Cannot cancel.', 'warning');
-        return;
+      console.error("Error fetching current order for cancellation:", error);
+      this.showToast('Order details not loaded. Cannot cancel.', 'warning');
+      return;
     }
 
-    if (!currentOrder) { // This check is somewhat redundant due to the try/catch with firstValueFrom, but safe.
+    if (!currentOrder) {
       this.showToast('Order details not loaded. Cannot cancel.', 'warning');
       return;
     }
 
     if (currentOrder.status === 'cancelled' || currentOrder.status === 'delivered') {
-        this.showToast(`Order is already ${currentOrder.status} and cannot be cancelled.`, 'medium');
-        return;
+      this.showToast(`Order is already ${currentOrder.status} and cannot be cancelled.`, 'medium');
+      return;
     }
 
     const alert = await this.alertController.create({
@@ -251,7 +246,7 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
             await loading.present();
 
             try {
-              await this.orderService.cancelOrder(currentOrder!, data.reason.trim()); // currentOrder is defined here
+              await this.orderService.cancelOrder(currentOrder!, data.reason.trim());
               this.showToast('Order cancelled successfully.', 'success');
               this.loadOrderDetails();
             } catch (error: any) {
@@ -296,6 +291,5 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
     if (this.routeSubscription) {
       this.routeSubscription.unsubscribe();
     }
-    // orderDataSubscription was removed as orderData$ is handled by async pipe or firstValueFrom
   }
 }

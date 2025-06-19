@@ -56,7 +56,7 @@
           <ion-list lines="none">
             <ion-item *ngFor="let field of orderDataResult.order.formData | keyvalue">
               <ion-label class="ion-text-wrap">
-                <h3 class="form-data-key">{{ field.key | titlecase }}</h3>
+                <h3 class="form-data-key">{{ (field.key as string) | titlecase }}</h3>
                 <p class="form-data-value">{{ field.value }}</p>
               </ion-label>
             </ion-item>
@@ -108,7 +108,7 @@
               ></ion-icon>
               <ion-label class="ion-text-wrap">
                 <h2>{{ update.status | titlecase }}</h2>
-                <p>{{ update2.message }}</p>
+                <p>{{ update.message }}</p>
                 <p class="update-timestamp"><small>{{ formatDate(update.createdAt) }}</small></p>
               </ion-label>
             </ion-item>
@@ -134,7 +134,7 @@
           <ion-spinner *ngIf="isCancellingOrder" name="dots"></ion-spinner>
           <span *ngIf="!isCancellingOrder">Cancel Order</span>
         </ion-button>
-        <div *ngIf="!canCancel(orderDataResult2.order)" class="ion2.text-center ion-padding-top cancellation-info">
+        <div *ngIf="!canCancel(orderDataResult.order)" class="ion-text-center ion-padding-top cancellation-info">
           <p><small>The cancellation period for this order has passed or it cannot be cancelled in its current state.</small></p>
         </div>
       </div>
@@ -149,7 +149,7 @@
     </ng-template>
   </ng-container>
 
-  <ng-template #loadingOrError2Template>
+  <ng-template #loadingOrErrorTemplate>
     <div *ngIf="!isLoading && !errorMessage" class="ion-text-center ion-padding">
       <ion-icon name="information-circle-outline" class="empty-state-icon" color="medium"></ion-icon>
       <h4>No Data</h4>

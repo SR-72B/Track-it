@@ -1,18 +1,18 @@
 // src/app/customer/order-tracking/order-tracking.component.ts
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core'; // Added ChangeDetectorRef
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { LoadingController, IonicModule } from '@ionic/angular';
 
 import { CustomerOrderService } from '../order/customer-order.service';
-import { Order, OrderUpdate } from '../../retailer/order-management/order.service'; // Ensure path is correct
+import { Order, OrderUpdate } from '../../retailer/order-management/order.service';
 import { Observable, Subscription, of, firstValueFrom } from 'rxjs';
-import { map, finalize, tap, catchError } from 'rxjs/operators'; // Removed unused 'filter'
+import { map, finalize, tap, catchError } from 'rxjs/operators';
 
 @Component({
   selector: 'app-order-tracking',
-  templateUrl: './order-tracking.component.html', // Ensure this file exists
-  styleUrls: ['./order-tracking.component.scss'],   // Ensure this file exists
+  templateUrl: './order-tracking.component.html',
+  styleUrls: ['./order-tracking.component.scss'],
   standalone: true,
   imports: [
     CommonModule,
@@ -36,13 +36,12 @@ export class OrderTrackingComponent implements OnInit, OnDestroy {
   currentStepIndex = 0;
 
   private routeSubscription: Subscription | undefined;
-  // No manual subscription to order$ or updates$ if primarily using async pipe
 
   constructor(
     private route: ActivatedRoute,
     private customerOrderService: CustomerOrderService,
     private loadingController: LoadingController,
-    private cdr: ChangeDetectorRef // Injected ChangeDetectorRef
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
@@ -55,7 +54,7 @@ export class OrderTrackingComponent implements OnInit, OnDestroy {
         console.error('Order ID not found in route parameters for tracking.');
         this.errorMessage = 'Order ID is missing. Cannot track order.';
         this.isLoading = false;
-        this.cdr.detectChanges(); // Ensure UI update
+        this.cdr.detectChanges();
       }
     });
   }
@@ -86,22 +85,22 @@ export class OrderTrackingComponent implements OnInit, OnDestroy {
       tap(order => {
         if (order) {
           this.currentStepIndex = this.statusSteps.findIndex(step => step.status === order.status);
-          if (order.status === 'cancelled' || order.status === 'failed') { // Added 'failed'
+          if (order.status === 'cancelled' || order.status === 'failed') {
             this.currentStepIndex = -1; // Special index for cancelled/failed
           }
-          if (this.orderId) { // Mark updates as seen
+          if (this.orderId) {
             firstValueFrom(this.customerOrderService.markUpdatesSeen(this.orderId))
               .catch(err => console.warn('Failed to mark updates as seen on load:', err));
           }
         } else if (!this.errorMessage) {
-            this.errorMessage = "Order not found.";
+          this.errorMessage = "Order not found.";
         }
-        this.cdr.detectChanges(); // Update view with new currentStepIndex or error
+        this.cdr.detectChanges();
       }),
       catchError(err => {
         console.error('Error loading order details:', err);
         this.errorMessage = 'Failed to load order details. Please try again.';
-        this.cdr.detectChanges(); // Ensure error message is displayed
+        this.cdr.detectChanges();
         return of(null);
       }),
       finalize(async () => {
@@ -112,24 +111,23 @@ export class OrderTrackingComponent implements OnInit, OnDestroy {
         if (refresherEvent) {
           refresherEvent.target.complete();
         }
-        this.cdr.detectChanges(); // Ensure loading state updates view
+        this.cdr.detectChanges();
       })
     );
 
     this.updates$ = this.customerOrderService.getOrderUpdates(this.orderId).pipe(
       map(updates => updates.sort((a, b) => {
         const getMs = (timestamp: any): number => {
-            if (!timestamp) return 0;
-            if (timestamp instanceof Date) return timestamp.getTime();
-            if (typeof timestamp.seconds === 'number') return new Date(timestamp.seconds * 1000 + (timestamp.nanoseconds || 0) / 1000000).getTime();
-            const d = new Date(timestamp);
-            return isNaN(d.getTime()) ? 0 : d.getTime();
+          if (!timestamp) return 0;
+          if (timestamp instanceof Date) return timestamp.getTime();
+          if (typeof timestamp.seconds === 'number') return new Date(timestamp.seconds * 1000 + (timestamp.nanoseconds || 0) / 1000000).getTime();
+          const d = new Date(timestamp);
+          return isNaN(d.getTime()) ? 0 : d.getTime();
         };
         return getMs(b.createdAt) - getMs(a.createdAt); // Descending
       })),
       catchError(err => {
         console.error('Error loading order updates:', err);
-        // Optionally set a specific error message for updates if needed
         return of([]);
       })
     );
@@ -138,12 +136,12 @@ export class OrderTrackingComponent implements OnInit, OnDestroy {
   formatDate(dateInput: any): string {
     if (!dateInput) return 'N/A';
     let d: Date;
-    if (dateInput && typeof dateInput.seconds === 'number') { // Firebase Timestamp (compat or v9 with .seconds)
+    if (dateInput && typeof dateInput.seconds === 'number') {
       d = new Date(dateInput.seconds * 1000 + (dateInput.nanoseconds || 0) / 1000000);
     } else if (dateInput instanceof Date) {
       d = dateInput;
     } else {
-      d = new Date(dateInput); // Attempt to parse if string or number
+      d = new Date(dateInput);
     }
 
     if (isNaN(d.getTime())) {
@@ -164,10 +162,10 @@ export class OrderTrackingComponent implements OnInit, OnDestroy {
     if (totalSegments <= 0) return 100;
 
     if (this.statusSteps[this.currentStepIndex]?.status === 'delivered') {
-        return 100;
+      return 100;
     }
     if (this.currentStepIndex === 0 && totalSegments > 0) {
-        return 5; // Small initial progress for the first step ('pending')
+      return 5; // Small initial progress for the first step ('pending')
     }
     const progress = (this.currentStepIndex / totalSegments) * 100;
     return Math.min(progress, 100);
@@ -180,12 +178,13 @@ export class OrderTrackingComponent implements OnInit, OnDestroy {
       case 'processing': return 'status-processing';
       case 'shipped': return 'status-shipped';
       case 'delivered': return 'status-delivered';
-      case 'completed': return 'status-completed'; // Assuming completed is a valid status
+      case 'completed': return 'status-completed';
       case 'cancelled': return 'status-cancelled';
       case 'failed': return 'status-failed';
       default: return 'status-other';
     }
   }
+
   doRefresh(event: any) {
     this.loadOrderDetails(event);
   }
@@ -194,6 +193,5 @@ export class OrderTrackingComponent implements OnInit, OnDestroy {
     if (this.routeSubscription) {
       this.routeSubscription.unsubscribe();
     }
-    // No need to unsubscribe from order$ or updates$ if only used with async pipe in template
   }
 }
