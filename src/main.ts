@@ -48,7 +48,7 @@ bootstrapApplication(AppComponent, {
       AngularFireModule.initializeApp(environment.firebase), // Not strictly needed if FIREBASE_OPTIONS is provided, but often included
       AngularFireAuthModule,
       AngularFirestoreModule,
-      // AngularFireStorageModule // Uncomment if you use Firebase Storage
+      AngularFireStorageModule
     ),
 
 
