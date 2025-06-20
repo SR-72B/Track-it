@@ -17,15 +17,20 @@ const routes: Routes = [
 
 @NgModule({
   declarations: [
-    LoginComponent,
-    SignupComponent,
-    EmailVerificationComponent
+    // Remove standalone components from declarations
+    // LoginComponent,
+    // SignupComponent,
+    // EmailVerificationComponent
   ],
   imports: [
     CommonModule,
     IonicModule,
     ReactiveFormsModule,
-    RouterModule.forChild(routes)
+    RouterModule.forChild(routes),
+    // Add standalone components to imports instead
+    LoginComponent,
+    SignupComponent,
+    EmailVerificationComponent
   ],
   exports: [RouterModule]
 })

@@ -1,0 +1,208 @@
+<!-- src/app/customer/profile/customer-profile.component.html -->
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/customer/dashboard"></ion-back-button>
+    </ion-buttons>
+    <ion-title>My Profile</ion-title>
+    <ion-buttons slot="end">
+      <ion-button fill="clear" (click)="toggleEditMode()" *ngIf="!isEditMode">
+        <ion-icon name="create-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <div class="profile-container" *ngIf="currentUser">
+    
+    <!-- Profile Image Section -->
+    <div class="profile-image-section">
+      <div class="image-container">
+        <ion-avatar class="profile-avatar">
+          <img [src]="previewUrl || currentUser.profileImageUrl || 'assets/images/default-avatar.png'" 
+               [alt]="currentUser.displayName || 'Profile'"
+               (error)="$event.target.src='assets/images/default-avatar.png'">
+        </ion-avatar>
+        <ion-button 
+          *ngIf="isEditMode" 
+          fill="clear" 
+          class="change-photo-btn"
+          (click)="fileInput.click()">
+          <ion-icon name="camera-outline"></ion-icon>
+        </ion-button>
+        <input 
+          #fileInput 
+          type="file" 
+          accept="image/*" 
+          style="display: none"
+          (change)="onFileSelected($event)">
+      </div>
+      
+      <!-- Email Verification Status -->
+      <div class="verification-status">
+        <ion-chip [color]="currentUser.emailVerified ? 'success' : 'warning'">
+          <ion-icon [name]="currentUser.emailVerified ? 'checkmark-circle' : 'warning'"></ion-icon>
+          <ion-label>{{ currentUser.emailVerified ? 'Verified' : 'Unverified' }}</ion-label>
+        </ion-chip>
+        <ion-button 
+          *ngIf="!currentUser.emailVerified" 
+          fill="clear" 
+          size="small"
+          (click)="resendVerificationEmail()">
+          Resend Verification
+        </ion-button>
+      </div>
+    </div>
+
+    <!-- Profile Information Form -->
+    <form [formGroup]="profileForm" (ngSubmit)="saveProfile()">
+      <ion-card class="profile-form-card">
+        <ion-card-header>
+          <ion-card-title>Personal Information</ion-card-title>
+        </ion-card-header>
+        <ion-card-content>
+          
+          <!-- Display Name -->
+          <ion-item>
+            <ion-label position="stacked">Display Name *</ion-label>
+            <ion-input 
+              formControlName="displayName"
+              [readonly]="!isEditMode"
+              placeholder="Enter your display name">
+            </ion-input>
+          </ion-item>
+          <div class="error-message" *ngIf="getFieldError('displayName')">
+            {{ getFieldError('displayName') }}
+          </div>
+
+          <!-- Email -->
+          <ion-item>
+            <ion-label position="stacked">Email *</ion-label>
+            <ion-input 
+              formControlName="email"
+              type="email"
+              readonly
+              placeholder="Enter your email">
+            </ion-input>
+          </ion-item>
+          <ion-note>Email cannot be changed. Contact support if needed.</ion-note>
+
+          <!-- Phone Number -->
+          <ion-item>
+            <ion-label position="stacked">Phone Number</ion-label>
+            <ion-input 
+              formControlName="phoneNumber"
+              [readonly]="!isEditMode"
+              placeholder="Enter your phone number">
+            </ion-input>
+          </ion-item>
+          <div class="error-message" *ngIf="getFieldError('phoneNumber')">
+            {{ getFieldError('phoneNumber') }}
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="form-actions" *ngIf="isEditMode">
+            <ion-button 
+              expand="block" 
+              type="submit"
+              [disabled]="profileForm.invalid || isLoading">
+              <ion-spinner *ngIf="isLoading" name="dots"></ion-spinner>
+              <span *ngIf="!isLoading">Save Changes</span>
+            </ion-button>
+            <ion-button 
+              expand="block" 
+              fill="outline" 
+              color="medium"
+              (click)="toggleEditMode()">
+              Cancel
+            </ion-button>
+          </div>
+        </ion-card-content>
+      </ion-card>
+    </form>
+
+    <!-- Change Password Section -->
+    <ion-card class="password-card">
+      <ion-card-header>
+        <ion-card-title>Change Password</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <form [formGroup]="passwordForm" (ngSubmit)="changePassword()">
+          
+          <!-- Current Password -->
+          <ion-item>
+            <ion-label position="stacked">Current Password *</ion-label>
+            <ion-input 
+              formControlName="currentPassword"
+              type="password"
+              placeholder="Enter current password">
+            </ion-input>
+          </ion-item>
+          <div class="error-message" *ngIf="getFieldError('currentPassword', passwordForm)">
+            {{ getFieldError('currentPassword', passwordForm) }}
+          </div>
+
+          <!-- New Password -->
+          <ion-item>
+            <ion-label position="stacked">New Password *</ion-label>
+            <ion-input 
+              formControlName="newPassword"
+              type="password"
+              placeholder="Enter new password">
+            </ion-input>
+          </ion-item>
+          <div class="error-message" *ngIf="getFieldError('newPassword', passwordForm)">
+            {{ getFieldError('newPassword', passwordForm) }}
+          </div>
+
+          <!-- Confirm Password -->
+          <ion-item>
+            <ion-label position="stacked">Confirm New Password *</ion-label>
+            <ion-input 
+              formControlName="confirmPassword"
+              type="password"
+              placeholder="Confirm new password">
+            </ion-input>
+          </ion-item>
+          <div class="error-message" *ngIf="getFieldError('confirmPassword', passwordForm)">
+            {{ getFieldError('confirmPassword', passwordForm) }}
+          </div>
+
+          <ion-button 
+            expand="block" 
+            type="submit"
+            color="secondary"
+            [disabled]="passwordForm.invalid">
+            Change Password
+          </ion-button>
+        </form>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Account Actions -->
+    <ion-card class="danger-zone-card">
+      <ion-card-header>
+        <ion-card-title color="danger">Danger Zone</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <p>Once you delete your account, there is no going back. Please be certain.</p>
+        <ion-button 
+          expand="block" 
+          color="danger" 
+          fill="outline"
+          (click)="confirmDeleteAccount()">
+          <ion-icon name="trash-outline" slot="start"></ion-icon>
+          Delete Account
+        </ion-button>
+      </ion-card-content>
+    </ion-card>
+
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-container" *ngIf="!currentUser">
+    <ion-spinner name="crescent"></ion-spinner>
+    <p>Loading profile...</p>
+  </div>
+</ion-content>

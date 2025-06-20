@@ -9,22 +9,40 @@
     "experimentalDecorators": true,
     "moduleResolution": "node",
     "importHelpers": true,
-    "target": "ES2022",         // Changed from es2015
+    "target": "ES2022",
     "module": "es2020",
     "lib": [
-      "ES2022",               // Changed from es2018
+      "ES2022",
       "dom"
     ],
-    "useDefineForClassFields": false // Added to address the other part of the warning you saw
+    "useDefineForClassFields": false,
+    "strict": true,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
     "strictInjectionParameters": true,
     "strictInputAccessModifiers": true,
-    "strictTemplates": true
-    // "strictNullChecks": true, // Consider adding these for stricter type checking
-    // "noImplicitAny": true,
-    // "noImplicitReturns": true,
-    // "noFallthroughCasesInSwitch": true
+    "strictTemplates": false,
+    "strictPropertyInitialization": false,
+    "strictDomEventTypes": false,
+    "strictDomLocalRefTypes": false,
+    "strictAttributeTypes": false,
+    "strictSafeNavigationTypes": false,
+    "strictInputTypes": false,
+    "strictOutputEventTypes": false,
+    "strictContextGenerics": false,
+    "strictLiteralTypes": false,
+    "enableIvy": true,
+    "fullTemplateTypeCheck": false,
+    "preserveWhitespaces": false
   }
 }

@@ -1,0 +1,187 @@
+<!-- src/app/payment/billing/billing.component.html -->
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/payment/subscription"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Billing & Invoices</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <div class="billing-container" *ngIf="currentUser">
+    
+    <!-- Current Subscription Overview -->
+    <ion-card class="subscription-overview-card" *ngIf="subscription">
+      <ion-card-header>
+        <ion-card-title>Current Subscription</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="subscription-details">
+          <div class="detail-row">
+            <span class="label">Plan:</span>
+            <span class="value">{{ subscription.planName }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="label">Status:</span>
+            <ion-badge [color]="subscription.status === 'active' ? 'success' : 'warning'">
+              {{ subscription.status | titlecase }}
+            </ion-badge>
+          </div>
+          <div class="detail-row">
+            <span class="label">Amount:</span>
+            <span class="value">{{ formatCurrency(subscription.price || 0, subscription.currency) }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="label">Billing Cycle:</span>
+            <span class="value">{{ subscription.interval | titlecase }}ly</span>
+          </div>
+          <div class="detail-row">
+            <span class="label">Next Billing:</span>
+            <span class="value">{{ getNextBillingDate() }}</span>
+          </div>
+          <div class="detail-row" *ngIf="subscription.status === 'trialing'">
+            <span class="label">Trial Ends:</span>
+            <span class="value">{{ formatDate(subscription.trialEndDate) }}</span>
+          </div>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Quick Actions -->
+    <ion-card class="quick-actions-card">
+      <ion-card-header>
+        <ion-card-title>Quick Actions</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="action-buttons">
+          <ion-button 
+            expand="block" 
+            fill="outline" 
+            routerLink="/payment/payment-methods">
+            <ion-icon name="card-outline" slot="start"></ion-icon>
+            Manage Payment Methods
+          </ion-button>
+          <ion-button 
+            expand="block" 
+            fill="outline" 
+            routerLink="/payment/manage-subscription">
+            <ion-icon name="settings-outline" slot="start"></ion-icon>
+            Manage Subscription
+          </ion-button>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Billing History -->
+    <ion-card class="billing-history-card">
+      <ion-card-header>
+        <ion-card-title>Billing History</ion-card-title>
+        <ion-card-subtitle>Your payment history and invoices</ion-card-subtitle>
+      </ion-card-header>
+      <ion-card-content>
+        
+        <!-- History List -->
+        <div class="billing-list" *ngIf="billingHistory.length > 0">
+          <ion-item 
+            *ngFor="let invoice of billingHistory" 
+            class="billing-item"
+            lines="full">
+            
+            <div class="invoice-info" slot="start">
+              <ion-icon 
+                [name]="getStatusIcon(invoice.status)" 
+                [color]="getStatusColor(invoice.status)"
+                class="status-icon">
+              </ion-icon>
+            </div>
+            
+            <ion-label>
+              <h3>{{ invoice.description }}</h3>
+              <p>{{ formatDate(invoice.createdAt) }}</p>
+              <p class="payment-method" *ngIf="invoice.paymentMethod">
+                Paid with {{ invoice.paymentMethod }}
+              </p>
+            </ion-label>
+            
+            <div class="invoice-actions" slot="end">
+              <div class="amount-status">
+                <span class="amount">{{ formatCurrency(invoice.amount, invoice.currency) }}</span>
+                <ion-badge [color]="getStatusColor(invoice.status)" class="status-badge">
+                  {{ invoice.status | titlecase }}
+                </ion-badge>
+              </div>
+              
+              <div class="action-buttons">
+                <ion-button 
+                  fill="clear" 
+                  size="small"
+                  (click)="downloadInvoice(invoice)"
+                  *ngIf="invoice.status === 'paid'">
+                  <ion-icon name="download-outline"></ion-icon>
+                </ion-button>
+                
+                <ion-button 
+                  fill="clear" 
+                  size="small" 
+                  color="medium"
+                  (click)="requestRefund(invoice)"
+                  *ngIf="invoice.status === 'paid'">
+                  <ion-icon name="return-up-back-outline"></ion-icon>
+                </ion-button>
+              </div>
+            </div>
+          </ion-item>
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state" *ngIf="billingHistory.length === 0">
+          <ion-icon name="receipt-outline" size="large"></ion-icon>
+          <h3>No Billing History</h3>
+          <p>Your billing history will appear here once you have transactions.</p>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Billing Information -->
+    <ion-card class="billing-info-card">
+      <ion-card-header>
+        <ion-card-title>Billing Information</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="info-section">
+          <h4>Need Help?</h4>
+          <p>If you have questions about your billing or need assistance, please contact our support team.</p>
+          
+          <div class="contact-options">
+            <ion-button fill="outline" size="small">
+              <ion-icon name="mail-outline" slot="start"></ion-icon>
+              Email Support
+            </ion-button>
+            <ion-button fill="outline" size="small">
+              <ion-icon name="chatbubble-outline" slot="start"></ion-icon>
+              Live Chat
+            </ion-button>
+          </div>
+        </div>
+        
+        <div class="info-section">
+          <h4>Billing Policies</h4>
+          <ul>
+            <li>Subscriptions are billed in advance</li>
+            <li>Refunds are processed per guidlines of the retailer</li>
+            <li>You can cancel your subscription at any time</li>
+            <li>Invoices are sent to your registered email address</li>
+          </ul>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-container" *ngIf="!currentUser">
+    <ion-spinner name="crescent"></ion-spinner>
+    <p>Loading billing information...</p>
+  </div>
+</ion-content>

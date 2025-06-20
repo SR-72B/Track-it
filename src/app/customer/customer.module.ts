@@ -22,18 +22,20 @@ const routes: Routes = [
 
 @NgModule({
   declarations: [
-    CustomerDashboardComponent,
-    AvailableFormsComponent,
-    PlaceOrderComponent,
-    CustomerOrderListComponent,
-    CustomerOrderDetailComponent
+    // Remove standalone components from declarations
   ],
   imports: [
     CommonModule,
     IonicModule,
     FormsModule,
     ReactiveFormsModule,
-    RouterModule.forChild(routes)
+    RouterModule.forChild(routes),
+    // Add standalone components to imports instead
+    CustomerDashboardComponent,
+    AvailableFormsComponent,
+    PlaceOrderComponent,
+    CustomerOrderListComponent,
+    CustomerOrderDetailComponent
   ],
   exports: [RouterModule]
 })

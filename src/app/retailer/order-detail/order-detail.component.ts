@@ -8,6 +8,25 @@ import { Observable, Subscription, of, firstValueFrom } from 'rxjs';
 import { catchError, finalize, tap, filter } from 'rxjs/operators';
 import { OrderService, Order, OrderUpdate } from '../order-management/order.service';
 
+// Add these interfaces to fix the titlecase pipe error
+interface FieldData {
+  key: string;
+  value: string | number | boolean | null;
+  label?: string;
+  type?: string;
+}
+
+interface OrderWithTypedFields extends Order {
+  fields?: FieldData[];
+  customFields?: FieldData[];
+  metadata?: FieldData[];
+}
+
+interface StatusOption {
+  value: string;
+  label: string;
+}
+
 @Component({
   selector: 'app-order-detail',
   templateUrl: './order-detail.component.html',
@@ -24,7 +43,7 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
   @ViewChild('loadingOrErrorTemplate', { static: true }) loadingOrErrorTemplate!: TemplateRef<any>;
   
   orderId: string | null = null;
-  orderData$: Observable<{order: Order, updates: OrderUpdate[]} | null> = of(null);
+  orderData$: Observable<{order: OrderWithTypedFields, updates: OrderUpdate[]} | null> = of(null);
   updateForm: FormGroup;
   isSubmittingUpdate = false;
   isCancellingOrder = false;
@@ -35,7 +54,7 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
   update2: any = null;
   orderDataResult2: any = null;
 
-  statuses = [
+  statuses: StatusOption[] = [
     { value: 'pending', label: 'Pending' },
     { value: 'processing', label: 'Processing' },
     { value: 'shipped', label: 'Shipped' },
@@ -118,6 +137,22 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
     );
   }
 
+  // Add this helper method to safely get fields with proper typing
+  public getOrderFields(order: Order | undefined | null): FieldData[] {
+    if (!order) return [];
+    
+    // Check different possible field properties and ensure they're properly typed
+    const fields = (order as any).fields || (order as any).customFields || (order as any).metadata || [];
+    
+    // Ensure each field has a string key
+    return fields.map((field: any) => ({
+      key: String(field.key || ''),
+      value: field.value,
+      label: field.label,
+      type: field.type
+    }));
+  }
+
   formatDate(dateInput: any): string {
     if (!dateInput) return 'N/A';
     let d: Date;
@@ -180,7 +215,7 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
       
       const orderData = await firstValueFrom(
         this.orderData$.pipe(
-          filter((data): data is { order: Order; updates: OrderUpdate[] } => !!data && !!data.order)
+          filter((data): data is { order: OrderWithTypedFields; updates: OrderUpdate[] } => !!data && !!data.order)
         )
       );
 
@@ -200,11 +235,11 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
   }
 
   async confirmCancelOrder() {
-    let currentOrder: Order | undefined;
+    let currentOrder: OrderWithTypedFields | undefined;
     try {
       const orderData = await firstValueFrom(
         this.orderData$.pipe(
-          filter((data): data is { order: Order; updates: OrderUpdate[] } => !!data && !!data.order)
+          filter((data): data is { order: OrderWithTypedFields; updates: OrderUpdate[] } => !!data && !!data.order)
         )
       );
       currentOrder = orderData.order;

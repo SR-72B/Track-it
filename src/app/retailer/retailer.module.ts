@@ -6,7 +6,7 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { RouterModule, Routes } from '@angular/router';
 
 import { DashboardComponent } from './dashboard/dashboard.component';
-import { FormBuilderComponent } from './form-builder/form-builder.component'; // Assuming this is a UI component
+import { FormBuilderComponent } from './form-builder/form-builder.component';
 import { FormListComponent } from './form-list/form-list.component';
 import { OrderListComponent } from './order-list/order-list.component';
 import { OrderDetailComponent } from './order-detail/order-detail.component';
@@ -14,8 +14,8 @@ import { OrderDetailComponent } from './order-detail/order-detail.component';
 const routes: Routes = [
   { path: 'dashboard', component: DashboardComponent },
   { path: 'forms', component: FormListComponent },
-  { path: 'forms/create', component: FormBuilderComponent }, // This should be a UI component
-  { path: 'forms/edit/:id', component: FormBuilderComponent }, // This should be a UI component
+  { path: 'forms/create', component: FormBuilderComponent },
+  { path: 'forms/edit/:id', component: FormBuilderComponent },
   { path: 'orders', component: OrderListComponent },
   { path: 'orders/:id', component: OrderDetailComponent },
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
@@ -23,21 +23,26 @@ const routes: Routes = [
 
 @NgModule({
   declarations: [
-    DashboardComponent,
-    FormBuilderComponent, // Make sure FormBuilderComponent is the UI component, not the service
-    FormListComponent,
-    OrderListComponent,
-    OrderDetailComponent
+    // Remove standalone components from declarations
+    // DashboardComponent,
+    // FormBuilderComponent,
+    // FormListComponent,
+    // OrderListComponent,
+    // OrderDetailComponent
   ],
   imports: [
     CommonModule,
     IonicModule,
     FormsModule,
     ReactiveFormsModule,
-    RouterModule.forChild(routes)
+    RouterModule.forChild(routes),
+    // Add standalone components to imports instead
+    DashboardComponent,
+    FormBuilderComponent,
+    FormListComponent,
+    OrderListComponent,
+    OrderDetailComponent
   ],
   exports: [RouterModule]
-  // Services like FormBuilderService are typically provided in 'root' (in the @Injectable decorator)
-  // or in a providers array if you need to scope them differently. They are not usually declared or exported here.
 })
 export class RetailerModule { }

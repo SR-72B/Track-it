@@ -1,36 +1,56 @@
-<!-- src/app/shared/components/file-upload/file-upload.component.html -->
 <div class="file-upload-container">
-    <div class="file-upload-box" (click)="fileInput.click()">
-      <ion-icon name="cloud-upload-outline"></ion-icon>
-      <p>
-        <span>Click to select {{ multiple ? 'files' : 'a file' }}</span>
-        <small *ngIf="allowedTypes.length > 0">
-          Allowed types: {{ allowedTypes.join(', ') }}
-        </small>
-      </p>
-      <input 
-        #fileInput 
-        type="file" 
-        (change)="onFileChange($event)" 
-        [multiple]="multiple"
-        [accept]="allowedTypes.length > 0 ? allowedTypes.map(type => '.' + type).join(',') : ''"
-        style="display: none;"
-      >
-    </div>
-  
-    <div *ngIf="selectedFiles.length > 0" class="selected-files">
-      <h5>Selected Files</h5>
-      <ion-list>
-        <ion-item *ngFor="let file of selectedFiles; let i = index">
-          <ion-icon name="document-outline" slot="start"></ion-icon>
-          <ion-label>
-            <h3>{{ file.name }}</h3>
-            <p>{{ fileService.formatFileSize(file.size) }}</p>
-          </ion-label>
-          <ion-button fill="clear" color="danger" slot="end" (click)="removeFile(i)">
-            <ion-icon name="trash-outline"></ion-icon>
-          </ion-button>
-        </ion-item>
-      </ion-list>
-    </div>
+  <div class="file-upload-box" (click)="triggerFileInput()">
+    <ion-icon name="cloud-upload-outline"></ion-icon>
+    <p>
+      <span>Click to select {{ multiple ? 'files' : 'a file' }}</span>
+      <small *ngIf="allowedTypes && allowedTypes.length > 0">
+        Allowed types: {{ allowedTypes.join(', ') }}
+      </small>
+      <small class="max-size-info">
+        Max file size: {{ maxSizeInMB }}MB
+      </small>
+      <small *ngIf="multiple" class="max-files-info">
+        Max files: {{ maxFiles }}
+      </small>
+    </p>
+    <input 
+      #fileInput 
+      type="file" 
+      (change)="onFileChange($event)" 
+      [multiple]="multiple"
+      style="display: none;">
   </div>
+
+  <div *ngIf="selectedFiles && selectedFiles.length > 0" class="selected-files">
+    <div class="selected-files-header">
+      <h5>Selected Files ({{ selectedFiles.length }}{{ multiple ? '/' + maxFiles : '' }})</h5>
+      <ion-button 
+        fill="clear" 
+        color="medium" 
+        size="small" 
+        (click)="clearFiles()"
+        *ngIf="selectedFiles.length > 0">
+        <ion-icon name="close-circle-outline" slot="start"></ion-icon>
+        Clear All
+      </ion-button>
+    </div>
+    
+    <ion-list>
+      <ion-item *ngFor="let file of selectedFiles; let i = index">
+        <ion-icon name="document-outline" slot="start"></ion-icon>
+        <ion-label>
+          <h3>{{ file.name }}</h3>
+          <p>{{ getFormattedFileSize(file.size) }}</p>
+        </ion-label>
+        <ion-button fill="clear" color="danger" slot="end" (click)="removeFile(i)">
+          <ion-icon name="trash-outline"></ion-icon>
+        </ion-button>
+      </ion-item>
+    </ion-list>
+  </div>
+
+  <div *ngIf="isUploading" class="upload-progress">
+    <ion-progress-bar [value]="uploadProgress"></ion-progress-bar>
+    <p>Uploading... {{ (uploadProgress * 100) | number:'1.0-0' }}%</p>
+  </div>
+</div>

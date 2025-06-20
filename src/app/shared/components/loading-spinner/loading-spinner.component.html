@@ -1,0 +1,9 @@
+<!-- src/app/shared/components/loading-spinner/loading-spinner.component.html -->
+<div class="loading-spinner-container">
+  <ion-spinner 
+    [name]="spinnerName" 
+    [color]="color" 
+    [class]="'spinner-' + size">
+  </ion-spinner>
+  <p *ngIf="showMessage" class="loading-message">{{ message }}</p>
+</div>

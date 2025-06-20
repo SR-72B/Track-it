@@ -8,7 +8,6 @@ import { RouterModule, Routes } from '@angular/router';
 import { ChatListComponent } from './chat/chat-list.component';
 import { ChatDetailComponent } from './chat/chat-detail.component';
 import { VideoCallComponent } from './video-call/video-call.component';
-// Corrected import path assuming 'notifications' folder is at the same level as 'chat' and 'video-call'
 import { NotificationsComponent } from './notification/notifications.component'; 
 
 const routes: Routes = [
@@ -21,21 +20,24 @@ const routes: Routes = [
 
 @NgModule({
   declarations: [
-    ChatListComponent,
-    ChatDetailComponent,
-    VideoCallComponent,
-    NotificationsComponent
+    // Remove standalone components from declarations
+    // ChatListComponent,
+    // ChatDetailComponent,
+    // VideoCallComponent,
+    // NotificationsComponent
   ],
   imports: [
     CommonModule,
     IonicModule,
     FormsModule,
     ReactiveFormsModule,
-    RouterModule.forChild(routes)
+    RouterModule.forChild(routes),
+    // Add standalone components to imports instead
+    ChatListComponent,
+    ChatDetailComponent,
+    VideoCallComponent,
+    NotificationsComponent
   ],
   exports: [RouterModule]
 })
 export class CommunicationModule { }
-
-// Removed the misplaced date formatting logic from here.
-// That logic should reside within a component or service where it's used.

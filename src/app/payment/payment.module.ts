@@ -15,14 +15,18 @@ const routes: Routes = [
 
 @NgModule({
   declarations: [
-    SubscriptionComponent,
-    SubscriptionDetailsComponent
+    // Remove standalone components from declarations
+    // SubscriptionComponent,
+    // SubscriptionDetailsComponent
   ],
   imports: [
     CommonModule,
     IonicModule,
     ReactiveFormsModule,
-    RouterModule.forChild(routes)
+    RouterModule.forChild(routes),
+    // Add standalone components to imports instead
+    SubscriptionComponent,
+    SubscriptionDetailsComponent
   ],
   exports: [RouterModule]
 })

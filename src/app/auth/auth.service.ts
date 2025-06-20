@@ -1,25 +1,28 @@
 // src/app/auth/auth.service.ts
 import { Injectable } from '@angular/core';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
-import { AngularFirestore, AngularFirestoreDocument } from '@angular/fire/compat/firestore';
+import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { Router } from '@angular/router';
-import { BehaviorSubject, Observable, from, of, firstValueFrom } from 'rxjs'; // Ensure firstValueFrom is imported
-import { map, switchMap, catchError } from 'rxjs/operators';
-import firebase from 'firebase/compat/app'; // For firebase.firestore.FieldValue
+import { BehaviorSubject, Observable, of, firstValueFrom } from 'rxjs';
+import { map, switchMap, catchError, take, tap } from 'rxjs/operators';
+import firebase from 'firebase/compat/app';
 
 // User interface defining the structure of your user objects
 export interface User {
   uid: string;
-  email: string | null; // Email can be null from Firebase user object
+  email: string | null;
   accountType: 'retailer' | 'customer';
-  displayName?: string | null; // displayName can be null
+  displayName?: string | null;
   phoneNumber?: string | null;
   emailVerified: boolean;
-  hasActiveSubscription?: boolean; // Managed by payment/subscription flow
-  subscriptionEndDate?: any; // Firestore Timestamp or Date object
+  hasActiveSubscription?: boolean;
+  subscriptionEndDate?: any;
   subscriptionStatus?: 'active' | 'cancelled' | 'trialing' | 'expired' | 'pending_payment' | 'past_due' | 'unpaid' | 'incomplete' | 'incomplete_expired' | 'ended' | string;
-  createdAt?: any; // Firestore Timestamp or Date object
-  // Add any other user-specific fields here
+  createdAt?: any;
+  updatedAt?: any;
+  profileImageUrl?: string;
+  isActive?: boolean;
+  lastLoginAt?: any;
 }
 
 @Injectable({
@@ -34,131 +37,185 @@ export class AuthService {
     private firestore: AngularFirestore,
     private router: Router
   ) {
-    // Subscribe to Firebase's authState to get the current Firebase user
-    // Then, fetch corresponding user data from Firestore to create a combined User object
+    this.initializeAuthState();
+  }
+
+  /**
+   * Initialize authentication state monitoring
+   */
+  private initializeAuthState(): void {
     this.afAuth.authState.pipe(
       switchMap(firebaseUser => {
         if (firebaseUser) {
-          // If a Firebase user exists, get their custom data from Firestore
           return this.getUserData(firebaseUser.uid).pipe(
             map(userDataFromDb => {
               if (userDataFromDb) {
-                // Convert Firestore Timestamps to JS Date objects if they exist
-                let subEndDate = userDataFromDb.subscriptionEndDate;
-                if (subEndDate && typeof subEndDate.seconds === 'number') {
-                  subEndDate = new Date(subEndDate.seconds * 1000);
-                }
-                let creationDate = userDataFromDb.createdAt;
-                 if (creationDate && typeof creationDate.seconds === 'number') {
-                  creationDate = new Date(creationDate.seconds * 1000);
-                }
-
-                // Combine Firebase Auth data with Firestore data
-                const user: User = {
-                  uid: firebaseUser.uid,
-                  email: firebaseUser.email,
-                  emailVerified: firebaseUser.emailVerified,
-                  displayName: firebaseUser.displayName || userDataFromDb.displayName, // Prioritize Firebase Auth displayName
-                  phoneNumber: firebaseUser.phoneNumber || userDataFromDb.phoneNumber, // Prioritize Firebase Auth phoneNumber
-                  // Custom fields from Firestore document
-                  accountType: userDataFromDb.accountType,
-                  hasActiveSubscription: userDataFromDb.hasActiveSubscription,
-                  subscriptionStatus: userDataFromDb.subscriptionStatus,
-                  subscriptionEndDate: subEndDate,
-                  createdAt: creationDate,
-                };
-                return user;
+                return this.combineUserData(firebaseUser, userDataFromDb);
               }
-              // This case means a Firebase user exists, but their document in 'users' collection is missing.
-              // This might happen if signup didn't complete fully or data was manually deleted.
-              // It's a potentially problematic state.
+              
               console.warn(`No Firestore data found for user ${firebaseUser.uid}. User profile is incomplete.`);
-              // Fallback to a minimal User object based on Firebase Auth data.
-              // Critical application logic should handle users in this state (e.g., force profile completion).
-              return {
-                  uid: firebaseUser.uid,
-                  email: firebaseUser.email,
-                  emailVerified: firebaseUser.emailVerified,
-                  displayName: firebaseUser.displayName,
-                  phoneNumber: firebaseUser.phoneNumber,
-                  accountType: 'customer', // Defaulting accountType is risky, handle this state carefully in app
-                  hasActiveSubscription: false, // Default
-              } as User; // Cast as User, acknowledge this is a fallback
+              return this.createFallbackUser(firebaseUser);
             }),
             catchError(error => {
               console.error("Error fetching user data from Firestore:", error);
-              this.currentUserSubject.next(null); // Clear current user on error
-              return of(null); // Propagate null to indicate an error state
+              this.currentUserSubject.next(null);
+              return of(null);
             })
           );
         } else {
-          // No Firebase user is authenticated
           return of(null);
         }
+      }),
+      catchError(error => {
+        console.error("Error in auth state initialization:", error);
+        return of(null);
       })
-    ).subscribe(user => {
-      this.currentUserSubject.next(user); // Update the BehaviorSubject with the new user state
+    ).subscribe({
+      next: (user) => {
+        this.currentUserSubject.next(user);
+      },
+      error: (error) => {
+        console.error("Auth state subscription error:", error);
+        this.currentUserSubject.next(null);
+      }
     });
   }
 
   /**
-   * Retrieves user data document from Firestore.
-   * @param uid User ID
-   * @returns Observable of User data or undefined if not found.
+   * Combine Firebase Auth data with Firestore data
    */
-  getUserData(uid: string): Observable<User | undefined> {
-    return this.firestore.doc<User>(`users/${uid}`).valueChanges()
-      .pipe(
-        map(userData => userData) // Simply pass through the data or undefined
-      );
+  private combineUserData(firebaseUser: firebase.User, userDataFromDb: any): User {
+    // Convert Firestore Timestamps to JS Date objects
+    const subEndDate = this.convertTimestamp(userDataFromDb.subscriptionEndDate);
+    const creationDate = this.convertTimestamp(userDataFromDb.createdAt);
+    const updatedDate = this.convertTimestamp(userDataFromDb.updatedAt);
+    const lastLogin = this.convertTimestamp(userDataFromDb.lastLoginAt);
+
+    return {
+      uid: firebaseUser.uid,
+      email: firebaseUser.email,
+      emailVerified: firebaseUser.emailVerified,
+      displayName: firebaseUser.displayName || userDataFromDb.displayName,
+      phoneNumber: firebaseUser.phoneNumber || userDataFromDb.phoneNumber,
+      accountType: userDataFromDb.accountType || 'customer',
+      hasActiveSubscription: userDataFromDb.hasActiveSubscription || false,
+      subscriptionStatus: userDataFromDb.subscriptionStatus,
+      subscriptionEndDate: subEndDate,
+      createdAt: creationDate,
+      updatedAt: updatedDate,
+      lastLoginAt: lastLogin,
+      profileImageUrl: userDataFromDb.profileImageUrl,
+      isActive: userDataFromDb.isActive !== false
+    };
   }
 
   /**
-   * Signs up a new user with email, password, display name, and account type.
-   * Creates a Firebase Auth user, updates their profile, sends a verification email,
-   * and creates a corresponding user document in Firestore.
+   * Create fallback user when Firestore data is missing
+   */
+  private createFallbackUser(firebaseUser: firebase.User): User {
+    return {
+      uid: firebaseUser.uid,
+      email: firebaseUser.email,
+      emailVerified: firebaseUser.emailVerified,
+      displayName: firebaseUser.displayName,
+      phoneNumber: firebaseUser.phoneNumber,
+      accountType: 'customer',
+      hasActiveSubscription: false,
+      isActive: true
+    };
+  }
+
+  /**
+   * Convert Firestore Timestamp to Date
+   */
+  private convertTimestamp(timestamp: any): Date | undefined {
+    if (!timestamp) return undefined;
+    if (timestamp instanceof Date) return timestamp;
+    if (typeof timestamp.seconds === 'number') {
+      return new Date(timestamp.seconds * 1000 + (timestamp.nanoseconds || 0) / 1000000);
+    }
+    try {
+      return new Date(timestamp);
+    } catch (error) {
+      console.warn('Invalid timestamp format:', timestamp);
+      return undefined;
+    }
+  }
+
+  /**
+   * Retrieves user data document from Firestore
+   */
+  getUserData(uid: string): Observable<User | undefined> {
+    if (!uid) {
+      return of(undefined);
+    }
+    
+    return this.firestore.doc<User>(`users/${uid}`).valueChanges().pipe(
+      catchError(error => {
+        console.error(`Error fetching user data for ${uid}:`, error);
+        return of(undefined);
+      })
+    );
+  }
+
+  /**
+   * Signs up a new user
    */
   async signup(email: string, password: string, displayName: string, accountType: 'retailer' | 'customer'): Promise<firebase.auth.UserCredential> {
+    if (!email || !password || !displayName || !accountType) {
+      throw new Error('All fields are required for signup.');
+    }
+
     try {
       const result = await this.afAuth.createUserWithEmailAndPassword(email, password);
       if (!result.user) {
         throw new Error('User creation failed: No user object returned from Firebase Auth.');
       }
 
-      // Update the Firebase Auth user's profile with the display name
+      // Update Firebase Auth profile
       await result.user.updateProfile({ displayName: displayName });
 
-      // Send email verification to the new user
+      // Send email verification
       await result.user.sendEmailVerification();
 
-      // Prepare user data for Firestore document
-      const userData: User = {
+      // Create Firestore user document
+      const userData: Partial<User> = {
         uid: result.user.uid,
         email: result.user.email,
         displayName: displayName,
         accountType: accountType,
-        emailVerified: false, // Email is not verified initially
-        hasActiveSubscription: false, // Customers are free; retailers subscribe separately
-        createdAt: firebase.firestore.FieldValue.serverTimestamp() // Use server-side timestamp
+        emailVerified: false,
+        hasActiveSubscription: false,
+        isActive: true,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
-      // Create the user document in Firestore
+
       await this.firestore.doc(`users/${result.user.uid}`).set(userData);
 
       return result;
     } catch (error) {
       console.error("Signup error in AuthService:", error);
-      throw error; // Re-throw the error to be handled by the calling component
+      throw error;
     }
   }
 
   /**
-   * Logs in an existing user with email and password.
+   * Logs in an existing user
    */
   async login(email: string, password: string): Promise<firebase.auth.UserCredential> {
+    if (!email || !password) {
+      throw new Error('Email and password are required for login.');
+    }
+
     try {
       const result = await this.afAuth.signInWithEmailAndPassword(email, password);
-      // The authState observer in the constructor will handle fetching full user data
-      // and updating the currentUserSubject.
+      
+      // Update last login time
+      if (result.user) {
+        await this.updateLastLoginTime(result.user.uid);
+      }
+      
       return result;
     } catch (error) {
       console.error("Login error in AuthService:", error);
@@ -167,38 +224,61 @@ export class AuthService {
   }
 
   /**
-   * Logs out the current user.
+   * Update last login time
+   */
+  private async updateLastLoginTime(uid: string): Promise<void> {
+    if (!uid) return;
+    
+    try {
+      await this.firestore.doc(`users/${uid}`).update({
+        lastLoginAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    } catch (error) {
+      console.warn('Failed to update last login time:', error);
+    }
+  }
+
+  /**
+   * Logs out the current user
    */
   async logout(): Promise<void> {
     try {
       await this.afAuth.signOut();
-      // currentUserSubject will be updated to null by the authState observer.
-      this.router.navigate(['/auth/login']); // Redirect to login page
+      this.currentUserSubject.next(null);
+      this.router.navigate(['/auth/login']);
     } catch (error) {
       console.error("Logout error:", error);
-      // Optionally, show a user-friendly message if logout fails for some reason
+      throw error;
     }
   }
 
   /**
-   * Sends a verification email to the currently authenticated user.
+   * Sends a verification email
    */
   async sendVerificationEmail(): Promise<void> {
-    const user = await firstValueFrom(this.afAuth.authState); // Get current Firebase user
-    if (user) {
-      return user.sendEmailVerification();
+    try {
+      const user = await firstValueFrom(this.afAuth.authState.pipe(take(1)));
+      if (!user) {
+        throw new Error('No authenticated user to send verification email.');
+      }
+      await user.sendEmailVerification();
+    } catch (error) {
+      console.error('Error sending verification email:', error);
+      throw error;
     }
-    console.warn('Attempted to send verification email, but no user is currently authenticated.');
-    // Optionally throw an error or return a rejected promise if no user
-    // throw new Error('No authenticated user to send verification email.');
   }
 
   /**
-   * Sends a password reset email to the given email address.
+   * Sends a password reset email
    */
   async resetPassword(email: string): Promise<void> {
+    if (!email) {
+      throw new Error('Email is required for password reset.');
+    }
+
     try {
-      return await this.afAuth.sendPasswordResetEmail(email);
+      await this.afAuth.sendPasswordResetEmail(email);
     } catch (error) {
       console.error("Password reset error:", error);
       throw error;
@@ -206,34 +286,42 @@ export class AuthService {
   }
 
   /**
-   * Updates the user's profile in both Firebase Auth (for displayName/photoURL)
-   * and Firestore (for custom data).
+   * Updates user profile
    */
   async updateProfile(uid: string, data: Partial<User>): Promise<void> {
     if (!uid) {
       throw new Error('UID is required to update profile.');
     }
+
+    if (!data || Object.keys(data).length === 0) {
+      throw new Error('Update data is required.');
+    }
+
     try {
-      // Prepare updates for Firebase Auth profile (displayName, photoURL)
+      // Prepare Firebase Auth profile updates
       const authProfileUpdates: { displayName?: string | null; photoURL?: string | null } = {};
       if (data.displayName !== undefined) {
         authProfileUpdates.displayName = data.displayName;
       }
-      // if (data.photoURL !== undefined) { // Example if you add photoURL
-      //   authProfileUpdates.photoURL = data.photoURL;
-      // }
+      if (data.profileImageUrl !== undefined) {
+        authProfileUpdates.photoURL = data.profileImageUrl;
+      }
 
-      // If there are changes for Firebase Auth profile, update it
+      // Update Firebase Auth profile if needed
       if (Object.keys(authProfileUpdates).length > 0) {
-        const user = await firstValueFrom(this.afAuth.authState);
-        // Ensure we are updating the profile of the currently logged-in user
+        const user = await firstValueFrom(this.afAuth.authState.pipe(take(1)));
         if (user && user.uid === uid) {
           await user.updateProfile(authProfileUpdates);
         }
       }
 
-      // Update the Firestore document with all provided data
-      return await this.firestore.doc(`users/${uid}`).update(data);
+      // Update Firestore document
+      const updateData = {
+        ...data,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      await this.firestore.doc(`users/${uid}`).update(updateData);
     } catch (error) {
       console.error('Error updating user profile:', error);
       throw error;
@@ -241,21 +329,30 @@ export class AuthService {
   }
 
   /**
-   * Updates the authenticated user's password.
-   * Requires re-authentication with the current password.
+   * Updates user password
    */
   async updatePassword(currentPassword: string, newPassword: string): Promise<void> {
+    if (!currentPassword || !newPassword) {
+      throw new Error('Current password and new password are required.');
+    }
+
     try {
-      const user = await firstValueFrom(this.afAuth.authState);
-      if (!user || !user.email) { // User must be authenticated and have an email for this method
+      const user = await firstValueFrom(this.afAuth.authState.pipe(take(1)));
+      if (!user || !user.email) {
         throw new Error('No authenticated user or user email is missing for password update.');
       }
-      // Get credential for re-authentication
+
+      // Re-authenticate user
       const credential = firebase.auth.EmailAuthProvider.credential(user.email, currentPassword);
-      // Re-authenticate the user
       await user.reauthenticateWithCredential(credential);
-      // Update the password
+
+      // Update password
       await user.updatePassword(newPassword);
+
+      // Update timestamp in Firestore
+      await this.firestore.doc(`users/${user.uid}`).update({
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
     } catch (error) {
       console.error("Password update error:", error);
       throw error;
@@ -263,8 +360,7 @@ export class AuthService {
   }
 
   /**
-   * Checks if the current user is a retailer.
-   * @returns Observable<boolean>
+   * Checks if current user is a retailer
    */
   isRetailer(): Observable<boolean> {
     return this.currentUser$.pipe(
@@ -273,8 +369,7 @@ export class AuthService {
   }
 
   /**
-   * Checks if the current user is a customer.
-   * @returns Observable<boolean>
+   * Checks if current user is a customer
    */
   isCustomer(): Observable<boolean> {
     return this.currentUser$.pipe(
@@ -283,13 +378,82 @@ export class AuthService {
   }
 
   /**
-   * Checks if the current user has an active subscription.
-   * Relies on the hasActiveSubscription field from the Firestore user document.
-   * @returns Observable<boolean>
+   * Checks if current user has active subscription
    */
   hasActiveSubscription(): Observable<boolean> {
     return this.currentUser$.pipe(
-      map(user => !!user?.hasActiveSubscription) // Optional chaining for safety
+      map(user => !!user?.hasActiveSubscription)
     );
+  }
+
+  /**
+   * Gets current user synchronously
+   */
+  getCurrentUser(): User | null {
+    return this.currentUserSubject.value;
+  }
+
+  /**
+   * Checks if user is authenticated
+   */
+  isAuthenticated(): Observable<boolean> {
+    return this.currentUser$.pipe(
+      map(user => !!user)
+    );
+  }
+
+  /**
+   * Checks if user email is verified
+   */
+  isEmailVerified(): Observable<boolean> {
+    return this.currentUser$.pipe(
+      map(user => !!user?.emailVerified)
+    );
+  }
+
+  /**
+   * Deletes user account
+   */
+  async deleteAccount(): Promise<void> {
+    try {
+      const user = await firstValueFrom(this.afAuth.authState.pipe(take(1)));
+      if (!user) {
+        throw new Error('No authenticated user to delete.');
+      }
+
+      // Delete Firestore document first
+      await this.firestore.doc(`users/${user.uid}`).delete();
+
+      // Delete Firebase Auth account
+      await user.delete();
+
+      // Clear current user and navigate to login
+      this.currentUserSubject.next(null);
+      this.router.navigate(['/auth/login']);
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Refresh current user data from Firestore
+   */
+  async refreshUserData(): Promise<void> {
+    const currentUser = this.getCurrentUser();
+    if (currentUser?.uid) {
+      try {
+        const userData = await firstValueFrom(this.getUserData(currentUser.uid));
+        if (userData) {
+          const firebaseUser = await firstValueFrom(this.afAuth.authState.pipe(take(1)));
+          if (firebaseUser) {
+            const updatedUser = this.combineUserData(firebaseUser, userData);
+            this.currentUserSubject.next(updatedUser);
+          }
+        }
+      } catch (error) {
+        console.error('Error refreshing user data:', error);
+      }
+    }
   }
 }

@@ -3,10 +3,10 @@ import { Injectable } from '@angular/core';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { AngularFireStorage } from '@angular/fire/compat/storage';
 import { Observable, combineLatest, from, of } from 'rxjs';
-import { map, switchMap, first, last } from 'rxjs/operators';
+import { map, switchMap, first, last, catchError } from 'rxjs/operators';
 import { AuthService, User } from '../../auth/auth.service';
 import { OrderForm } from '../../retailer/form-builder/form-builder.service';
-import { Order, OrderUpdate } from '../../retailer/order-management/order.service';
+import { Order, OrderUpdate, FieldData, FormData } from '../../retailer/order-management/order.service';
 
 @Injectable({
   providedIn: 'root'
@@ -21,42 +21,87 @@ export class CustomerOrderService {
   getActiveForms(): Observable<OrderForm[]> {
     return this.firestore.collection<OrderForm>('orderForms', ref => 
       ref.where('active', '==', true)
-    ).valueChanges({ idField: 'id' });
+    ).valueChanges({ idField: 'id' })
+    .pipe(
+      catchError(error => {
+        console.error('Error fetching active forms:', error);
+        return of([]);
+      })
+    );
   }
 
   getOrderForm(formId: string): Observable<OrderForm | undefined> {
-    return this.firestore.collection('orderForms').doc<OrderForm>(formId).valueChanges();
+    return this.firestore.collection('orderForms').doc<OrderForm>(formId).valueChanges()
+      .pipe(
+        catchError(error => {
+          console.error(`Error fetching order form ${formId}:`, error);
+          return of(undefined);
+        })
+      );
   }
 
   getCustomerOrders(customerId: string): Observable<Order[]> {
     return this.firestore.collection<Order>('orders', ref => 
       ref.where('customerId', '==', customerId).orderBy('createdAt', 'desc')
-    ).valueChanges({ idField: 'id' });
+    ).valueChanges({ idField: 'id' })
+    .pipe(
+      map(orders => this.normalizeOrdersFields(orders)),
+      catchError(error => {
+        console.error('Error fetching customer orders:', error);
+        return of([]);
+      })
+    );
   }
 
   getOrder(orderId: string): Observable<Order | undefined> {
-    return this.firestore.collection('orders').doc<Order>(orderId).valueChanges({ idField: 'id' });
+    return this.firestore.collection('orders').doc<Order>(orderId).valueChanges({ idField: 'id' })
+      .pipe(
+        map(order => {
+          if (!order) {
+            console.warn(`Order with ID ${orderId} not found.`);
+            return undefined;
+          }
+          return this.normalizeOrderFields(order);
+        }),
+        catchError(error => {
+          console.error(`Error fetching order ${orderId}:`, error);
+          return of(undefined);
+        })
+      );
   }
 
   getOrderUpdates(orderId: string): Observable<OrderUpdate[]> {
     return this.firestore.collection<OrderUpdate>('orderUpdates', ref => 
       ref.where('orderId', '==', orderId).orderBy('createdAt', 'desc')
-    ).valueChanges({ idField: 'id' });
+    ).valueChanges({ idField: 'id' })
+    .pipe(
+      catchError(error => {
+        console.error(`Error fetching order updates for ${orderId}:`, error);
+        return of([]);
+      })
+    );
   }
 
-  getOrderWithUpdates(orderId: string): Observable<{order: Order, updates: OrderUpdate[]}> {
+  getOrderWithUpdates(orderId: string): Observable<{order: Order, updates: OrderUpdate[]} | null> {
     return combineLatest([
       this.getOrder(orderId),
       this.getOrderUpdates(orderId)
     ]).pipe(
       map(([order, updates]) => {
-        if (!order) throw new Error('Order not found in combined stream');
+        if (!order) {
+          console.warn(`Order ${orderId} not found for getOrderWithUpdates.`);
+          return null;
+        }
         return { order, updates };
+      }),
+      catchError(error => {
+        console.error(`Error in getOrderWithUpdates for ${orderId}:`, error);
+        return of(null);
       })
     );
   }
 
-  async submitOrder(formId: string, formData: any, files: File[] = []): Promise<string> {
+  async submitOrder(formId: string, formData: FormData, files: File[] = []): Promise<string> {
     const user = await this.authService.currentUser$.pipe(first()).toPromise();
     if (!user) throw new Error('User not authenticated');
     
@@ -92,8 +137,8 @@ export class CustomerOrderService {
       customerName: user.displayName || 'Anonymous',
       customerEmail: user.email,
       customerPhone: user.phoneNumber || '',
-      purchaseOrder: formData.purchaseOrder || '',
-      formData,
+      purchaseOrder: (formData as any).purchaseOrder || '',
+      formData: this.normalizeFormData(formData),
       fileUrls,
       status: 'pending',
       createdAt: now,
@@ -125,21 +170,24 @@ export class CustomerOrderService {
       first(),
       switchMap(order => {
         if (!order) {
-            throw new Error('Order not found or you do not have permission to view it.');
+          throw new Error('Order not found or you do not have permission to view it.');
         }
 
         const now = new Date();
+        let deadline: Date;
 
-        // =========================================================================================
-        // !!! FIX APPLIED HERE !!!
-        // Data from Firestore is a Timestamp object, not a JS Date object.
-        // We cast it to 'any' to access the 'seconds' property and convert it to a Date.
-        // =========================================================================================
-        const deadlineTimestamp = order.cancellationDeadline as any;
-        const deadline = new Date(deadlineTimestamp.seconds * 1000);
+        // Handle Firestore Timestamp conversion safely
+        const deadlineInput = order.cancellationDeadline as any;
+        if (deadlineInput && typeof deadlineInput.seconds === 'number') {
+          deadline = new Date(deadlineInput.seconds * 1000 + (deadlineInput.nanoseconds || 0) / 1000000);
+        } else if (deadlineInput instanceof Date) {
+          deadline = deadlineInput;
+        } else {
+          deadline = new Date(deadlineInput);
+        }
         
-        if (now > deadline) {
-          throw new Error('Cancellation deadline has passed');
+        if (isNaN(deadline.getTime()) || now > deadline) {
+          throw new Error('Cancellation deadline has passed or is invalid');
         }
         
         const batch = this.firestore.firestore.batch();
@@ -163,6 +211,10 @@ export class CustomerOrderService {
         batch.set(updateRef, update);
         
         return from(batch.commit());
+      }),
+      catchError(error => {
+        console.error('Error cancelling order:', error);
+        throw error;
       })
     );
   }
@@ -184,7 +236,78 @@ export class CustomerOrderService {
         } else {
           return of(undefined);
         }
+      }),
+      catchError(error => {
+        console.error('Error marking updates as seen:', error);
+        return of(undefined);
       })
     );
+  }
+
+  // Helper method to normalize order fields to ensure proper typing
+  private normalizeOrderFields(order: Order): Order {
+    // Ensure formData exists and is properly typed
+    if (!order.formData) {
+      order.formData = {};
+    } else {
+      order.formData = this.normalizeFormData(order.formData);
+    }
+
+    // Convert any existing field arrays to properly typed arrays
+    if ((order as any).fields && Array.isArray((order as any).fields)) {
+      order.fields = this.normalizeFieldArray((order as any).fields);
+    }
+
+    if ((order as any).customFields && Array.isArray((order as any).customFields)) {
+      order.customFields = this.normalizeFieldArray((order as any).customFields);
+    }
+
+    if ((order as any).metadata && Array.isArray((order as any).metadata)) {
+      order.metadata = this.normalizeFieldArray((order as any).metadata);
+    }
+
+    return order;
+  }
+
+  // Helper method to normalize multiple orders
+  private normalizeOrdersFields(orders: Order[]): Order[] {
+    return orders.map(order => this.normalizeOrderFields(order));
+  }
+
+  // Helper method to ensure field arrays have proper string keys
+  private normalizeFieldArray(fields: any[]): FieldData[] {
+    return fields.map(field => ({
+      key: String(field.key || ''),
+      value: field.value,
+      label: field.label,
+      type: field.type
+    }));
+  }
+
+  // Helper method to normalize form data
+  private normalizeFormData(formData: any): FormData {
+    if (!formData || typeof formData !== 'object') {
+      return {};
+    }
+
+    const normalized: FormData = {};
+    Object.entries(formData).forEach(([key, value]) => {
+      normalized[String(key)] = value as string | number | boolean | null;
+    });
+
+    return normalized;
+  }
+
+  // Helper method to extract fields from formData as FieldData array
+  public getOrderFieldsFromFormData(order: Order): FieldData[] {
+    if (!order.formData) return [];
+    
+    return Object.entries(order.formData).map(([key, value]) => ({
+      key: String(key),
+      value: value,
+      label: key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()),
+      type: typeof value === 'number' ? 'number' : 
+            typeof value === 'boolean' ? 'boolean' : 'text'
+    }));
   }
 }

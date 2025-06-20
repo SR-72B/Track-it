@@ -1,6 +1,6 @@
 // src/app/retailer/order-management/order-management.component.ts
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
-import { FormBuilder, FormGroup, Validators, FormsModule } from '@angular/forms'; // Changed to FormsModule for ngModel
+import { FormBuilder, FormGroup, Validators, FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AlertController, LoadingController, ToastController, ModalController, IonicModule } from '@ionic/angular';
@@ -9,9 +9,6 @@ import { Observable, Subscription, of, firstValueFrom } from 'rxjs';
 import { first, catchError, finalize, switchMap, tap } from 'rxjs/operators';
 
 import { AuthService, User } from '../../auth/auth.service';
-// Ensure Order interface in order.service.ts includes:
-// id?: string; customerId?: string; customerName?: string; customerEmail?: string;
-// status: string; createdAt: any; totalAmount?: number; purchaseOrder?: string;
 import { OrderService, Order, OrderUpdate } from '../order-management/order.service';
 import { CommunicationService } from '../../communication/communication.service';
 
@@ -22,7 +19,7 @@ import { CommunicationService } from '../../communication/communication.service'
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule, // For [(ngModel)] with searchTerm
+    FormsModule,
     IonicModule,
     RouterModule
   ]
@@ -31,11 +28,10 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
   allOrders: Order[] = [];
   filteredOrders: Order[] = [];
   isLoading = true;
-  activeFilter = 'all'; // Corresponds to ion-segment value
+  activeFilter = 'all';
   searchTerm = '';
   errorMessage: string | null = null;
 
-  // Define statuses for the update prompt
   statuses = [
     { value: 'pending', label: 'Pending' },
     { value: 'processing', label: 'Processing' },
@@ -65,7 +61,7 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
     private alertController: AlertController,
     private loadingController: LoadingController,
     private toastController: ToastController,
-    private modalController: ModalController, // Keep if planning to use
+    private modalController: ModalController,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -94,23 +90,16 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
 
     this.isLoading = true;
     this.errorMessage = null;
-    let loader: HTMLIonLoadingElement | undefined;
-
-    if (!refresherEvent) {
-      // loader = await this.loadingController.create({ message: 'Loading orders...' });
-      // await loader.present();
-    }
 
     if (this.ordersSubscription) {
       this.ordersSubscription.unsubscribe();
     }
 
     this.ordersSubscription = this.orderService.getRetailerOrders(this.currentUser.uid).pipe(
-      finalize(async () => {
+      finalize(() => {
         this.isLoading = false;
-        // if (loader) await loader.dismiss().catch(e => console.warn("Loader dismiss error", e));
         if (refresherEvent) refresherEvent.target.complete();
-        this.cdr.detectChanges(); // Ensure UI updates
+        this.cdr.detectChanges();
       }),
       catchError(error => {
         console.error('Error loading orders:', error);
@@ -160,7 +149,22 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
         order.customerEmail?.toLowerCase().includes(term)
       );
     }
-    this.filteredOrders = [...filtered]; // Create new array reference for change detection
+    this.filteredOrders = [...filtered];
+    this.cdr.detectChanges();
+  }
+
+  // Missing method implementations
+  filterOrders(event: any) {
+    this.activeFilter = event.detail.value;
+    this.applyFilters();
+  }
+
+  refreshOrders(event: any) {
+    this.loadOrders(event);
+  }
+
+  refreshOrderStatistics() {
+    this.calculateOrderStatistics();
     this.cdr.detectChanges();
   }
 
@@ -171,7 +175,7 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
 
   searchOrders(event?: any) {
     if (event && event.target) {
-        this.searchTerm = event.target.value || '';
+      this.searchTerm = event.target.value || '';
     }
     this.applyFilters();
   }
@@ -183,10 +187,10 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
 
   doRefresh(event: any) {
     if (this.currentUser && this.currentUser.uid) {
-        this.loadOrders(event);
+      this.loadOrders(event);
     } else {
-        this.showToast('Please log in to refresh orders.', 'warning');
-        if (event) event.target.complete();
+      this.showToast('Please log in to refresh orders.', 'warning');
+      if (event) event.target.complete();
     }
   }
 
@@ -198,7 +202,7 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
 
   async promptUpdateOrderStatus(order: Order) {
     const alertInputs: any[] = this.statuses.map(s => ({
-        name: 'status', type: 'radio', label: s.label, value: s.value, checked: order.status === s.value
+      name: 'status', type: 'radio', label: s.label, value: s.value, checked: order.status === s.value
     }));
 
     const alert = await this.alertController.create({
@@ -210,8 +214,8 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
           text: 'Next',
           handler: async (selectedStatus) => {
             if (!selectedStatus) {
-                this.showToast('Please select a status.', 'warning');
-                return false;
+              this.showToast('Please select a status.', 'warning');
+              return false;
             }
             if (selectedStatus === order.status) {
               this.showToast(`Order status is already ${selectedStatus}.`, 'medium');
@@ -230,9 +234,9 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
     const messageAlert = await this.alertController.create({
       header: 'Status Update Message',
       message: 'Provide a message for the customer regarding this update.',
-      inputs: [ { name: 'message', type: 'textarea', placeholder: 'Your message to the customer...' } ],
+      inputs: [{ name: 'message', type: 'textarea', placeholder: 'Your message to the customer...' }],
       buttons: [
-        { text: 'Back', role: 'cancel', handler: () => { this.promptUpdateOrderStatus(order); } },
+        { text: 'Back', role: 'cancel', handler: () => { this.promptUpdateOrderStatus(order); return true; } },
         {
           text: 'Update Order',
           handler: async (messageData) => {
@@ -260,7 +264,7 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
           order.customerId, order.id, newStatus, message
         )).catch(err => console.error('Failed to send order status notification:', err));
       }
-      this.loadOrders(); // Refresh
+      this.loadOrders();
     } catch (error: any) {
       this.showErrorAlert('Update Failed', error.message || 'Failed to update order status.');
     } finally {
@@ -270,13 +274,13 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
 
   async confirmCancelOrder(order: Order) {
     if (order.status === 'cancelled' || order.status === 'delivered') {
-        this.showToast(`Order is already ${order.status} and cannot be cancelled.`, 'medium');
-        return;
+      this.showToast(`Order is already ${order.status} and cannot be cancelled.`, 'medium');
+      return;
     }
     const alert = await this.alertController.create({
       header: 'Cancel Order',
       message: 'Please provide a reason for cancellation:',
-      inputs: [ { name: 'reason', type: 'textarea', placeholder: 'e.g., Items out of stock' } ],
+      inputs: [{ name: 'reason', type: 'textarea', placeholder: 'e.g., Items out of stock' }],
       buttons: [
         { text: 'Back', role: 'cancel' },
         {
@@ -331,8 +335,8 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
 
   async exportOrders() {
     if (this.filteredOrders.length === 0) {
-        this.showToast('No orders to export based on current filters.', 'medium');
-        return;
+      this.showToast('No orders to export based on current filters.', 'medium');
+      return;
     }
     const csvContent = this.generateOrdersCSV();
     this.downloadCSV(csvContent, `orders-export-${new Date().toISOString().split('T')[0]}.csv`);
@@ -346,12 +350,12 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
       return [
         order.id || '',
         order.customerName || '',
-        order.customerEmail || '', // Ensure Order interface has customerEmail
+        order.customerEmail || '',
         order.status?.toUpperCase() || '',
         date,
-        order.totalAmount || 0, // Ensure Order interface has totalAmount
+        order.totalAmount || 0,
         order.purchaseOrder || 'N/A'
-      ].map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`); // Handle null/undefined cells
+      ].map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`);
     });
     return [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
   }
@@ -369,22 +373,22 @@ export class OrderManagementComponent implements OnInit, OnDestroy {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } else {
-        this.showErrorAlert('Export Failed', 'CSV download is not supported by your browser.');
+      this.showErrorAlert('Export Failed', 'CSV download is not supported by your browser.');
     }
   }
 
   async presentStatisticsAlert() {
     const alert = await this.alertController.create({
-        header: 'Order Statistics',
-        message: `
-            Total Orders: ${this.orderStats.total}<br>
-            Pending: ${this.orderStats.pending}<br>
-            Processing: ${this.orderStats.processing}<br>
-            Shipped: ${this.orderStats.shipped}<br>
-            Delivered: ${this.orderStats.delivered}<br>
-            Cancelled: ${this.orderStats.cancelled}
-        `,
-        buttons: ['OK']
+      header: 'Order Statistics',
+      message: `
+        Total Orders: ${this.orderStats.total}<br>
+        Pending: ${this.orderStats.pending}<br>
+        Processing: ${this.orderStats.processing}<br>
+        Shipped: ${this.orderStats.shipped}<br>
+        Delivered: ${this.orderStats.delivered}<br>
+        Cancelled: ${this.orderStats.cancelled}
+      `,
+      buttons: ['OK']
     });
     await alert.present();
   }

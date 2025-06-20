@@ -1,8 +1,9 @@
 // src/app/payment/subscription/subscription.component.ts
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
-import { AlertController, LoadingController } from '@ionic/angular';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { Router, RouterModule } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { AlertController, LoadingController, IonicModule } from '@ionic/angular';
 import { AuthService } from '../../auth/auth.service';
 import { PaymentService, CardDetails } from '../payment.service';
 import { first } from 'rxjs/operators';
@@ -10,7 +11,14 @@ import { first } from 'rxjs/operators';
 @Component({
   selector: 'app-subscription',
   templateUrl: './subscription.component.html',
-  styleUrls: ['./subscription.component.scss']
+  styleUrls: ['./subscription.component.scss'],
+  standalone: true,
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    IonicModule,
+    RouterModule
+  ]
 })
 export class SubscriptionComponent implements OnInit {
   paymentForm: FormGroup;
@@ -49,7 +57,7 @@ export class SubscriptionComponent implements OnInit {
         Validators.maxLength(4),
         Validators.pattern(/^\d+$/)
       ]]
-    }, { validator: this.validateExpiryDate });
+    }, { validators: this.validateExpiryDate.bind(this) });
   }
 
   ngOnInit() {
@@ -76,58 +84,62 @@ export class SubscriptionComponent implements OnInit {
     let value = event.target.value.replace(/\s+/g, '');
     if (value.length > 0) {
       // Format the card number with spaces for readability
-      value = value.match(/.{1,4}/g).join(' ');
+      value = value.match(/.{1,4}/g)?.join(' ') || value;
       event.target.value = value;
     }
   }
 
   async subscribe() {
-    if (this.paymentForm.valid) {
-      this.isSubmitting = true;
-      const loading = await this.loadingController.create({
-        message: 'Processing subscription...',
-        spinner: 'crescent'
-      });
-      await loading.present();
+    if (this.paymentForm.invalid) {
+      this.paymentForm.markAllAsTouched();
+      return;
+    }
 
-      try {
-        const cardDetails: CardDetails = {
-          name: this.paymentForm.value.cardName,
-          cardNumber: this.paymentForm.value.cardNumber.replace(/\s+/g, ''),
-          expiryMonth: this.paymentForm.value.expiryMonth,
-          expiryYear: this.paymentForm.value.expiryYear.toString(),
-          cvc: this.paymentForm.value.cvc
-        };
+    this.isSubmitting = true;
+    const loading = await this.loadingController.create({
+      message: 'Processing subscription...',
+      spinner: 'crescent'
+    });
+    await loading.present();
 
-        await this.paymentService.processSubscription(this.user.uid, cardDetails).toPromise();
-        
-        await loading.dismiss();
-        this.isSubmitting = false;
+    try {
+      const cardDetails: CardDetails = {
+        name: this.paymentForm.value.cardName,
+        cardNumber: this.paymentForm.value.cardNumber.replace(/\s+/g, ''),
+        expiryMonth: this.paymentForm.value.expiryMonth,
+        expiryYear: this.paymentForm.value.expiryYear.toString(),
+        cvc: this.paymentForm.value.cvc
+      };
 
-        const alert = await this.alertController.create({
-          header: 'Subscription Activated',
-          message: 'Your 30-day free trial has started. You will be charged $14/month after the trial period unless you cancel.',
-          buttons: [
-            {
-              text: 'OK',
-              handler: () => {
-                this.router.navigate(['/retailer/dashboard']);
-              }
+      await this.paymentService.processSubscription(this.user.uid, cardDetails).toPromise();
+      
+      await loading.dismiss();
+      this.isSubmitting = false;
+
+      const alert = await this.alertController.create({
+        header: 'Subscription Activated',
+        message: 'Your 30-day free trial has started. You will be charged $14/month after the trial period unless you cancel.',
+        buttons: [
+          {
+            text: 'OK',
+            handler: () => {
+              this.router.navigate(['/retailer/dashboard']);
+              return true; // Fixed: Added return value
             }
-          ]
-        });
-        await alert.present();
-      } catch (error) {
-        await loading.dismiss();
-        this.isSubmitting = false;
-        
-        const alert = await this.alertController.create({
-          header: 'Subscription Failed',
-          message: error.message || 'There was an error processing your subscription. Please try again.',
-          buttons: ['OK']
-        });
-        await alert.present();
-      }
+          }
+        ]
+      });
+      await alert.present();
+    } catch (error: any) {
+      await loading.dismiss();
+      this.isSubmitting = false;
+      
+      const alert = await this.alertController.create({
+        header: 'Subscription Failed',
+        message: error.message || 'There was an error processing your subscription. Please try again.',
+        buttons: ['OK']
+      });
+      await alert.present();
     }
   }
 }

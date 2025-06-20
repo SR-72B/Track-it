@@ -2,10 +2,23 @@
 import { Injectable } from '@angular/core';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { AngularFireStorage } from '@angular/fire/compat/storage';
-import { Observable, combineLatest, of, from } from 'rxjs'; // Added 'from'
-import { map, switchMap, catchError } from 'rxjs/operators'; // Added 'catchError'
-import { AuthService } from '../../auth/auth.service'; // Assuming path is correct
-import firebase from 'firebase/compat/app'; // For serverTimestamp
+import { Observable, combineLatest, of, from } from 'rxjs';
+import { map, switchMap, catchError } from 'rxjs/operators';
+import { AuthService } from '../../auth/auth.service';
+import firebase from 'firebase/compat/app';
+
+// Define proper field data interface
+export interface FieldData {
+  key: string;
+  value: string | number | boolean | null;
+  label?: string;
+  type?: string;
+}
+
+// Define form data as a strongly typed object
+export interface FormData {
+  [key: string]: string | number | boolean | null;
+}
 
 export interface Order {
   id: string; // Firestore document ID
@@ -13,37 +26,21 @@ export interface Order {
   retailerId: string;
   customerId: string;
   customerName: string;
-  customerEmail?: string; // Added as optional, used in OrderManagementComponent
-  customerPhone?: string; // Made optional as it might not always be present
+  customerEmail?: string;
+  customerPhone?: string;
   purchaseOrder?: string;
-  formData: any; // Consider defining a more specific type based on your form fields
+  formData: FormData; // Properly typed form data
+  fields?: FieldData[]; // Alternative field structure
+  customFields?: FieldData[]; // Additional custom fields
+  metadata?: FieldData[]; // Metadata fields
   fileUrls?: string[];
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | string; // Allow string for flexibility
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | string;
   notes?: string;
-  createdAt: any; // Firestore Timestamp (or Date if converted on retrieval)
-  updatedAt: any; // Firestore Timestamp (or Date if converted on retrieval)
+  createdAt: any; // Firestore Timestamp
+  updatedAt: any; // Firestore Timestamp
   cancellationDeadline?: any; // Firestore Timestamp or Date
-  totalAmount?: number; // Added as optional, used in OrderManagementComponent
-  // Add other relevant fields like shippingAddress, items array with details, etc.
-  // items?: OrderItem[];
-  // shippingAddress?: Address;
+  totalAmount?: number;
 }
-
-// Example for OrderItem and Address if you want to structure them
-// export interface OrderItem {
-//   productId: string;
-//   productName: string;
-//   quantity: number;
-//   price: number;
-//   sku?: string;
-// }
-// export interface Address {
-//   street: string;
-//   city: string;
-//   state: string;
-//   postalCode: string;
-//   country: string;
-// }
 
 export interface OrderUpdate {
   id: string; // Firestore document ID
@@ -52,8 +49,15 @@ export interface OrderUpdate {
   message: string;
   createdAt: any; // Firestore Timestamp
   seenByCustomer: boolean;
-  updatedBy?: string; // UID of user (e.g., retailer) who made the update
+  updatedBy?: string; // UID of user who made the update
   updatedByName?: string; // Name of user who made the update
+}
+
+// Helper type for order with typed fields
+export interface OrderWithTypedFields extends Order {
+  fields: FieldData[];
+  customFields: FieldData[];
+  metadata: FieldData[];
 }
 
 @Injectable({
@@ -62,35 +66,36 @@ export interface OrderUpdate {
 export class OrderService {
   constructor(
     private firestore: AngularFirestore,
-    private storage: AngularFireStorage, // Injected but not used in this snippet
-    private authService: AuthService // Injected but not used directly in these methods
+    private storage: AngularFireStorage,
+    private authService: AuthService
   ) {}
 
   getRetailerOrders(retailerId: string): Observable<Order[]> {
     return this.firestore.collection<Order>('orders', ref =>
       ref.where('retailerId', '==', retailerId).orderBy('createdAt', 'desc')
-    ).valueChanges({ idField: 'id' }) // Automatically map Firestore doc ID to 'id' field
+    ).valueChanges({ idField: 'id' })
     .pipe(
+      map(orders => this.normalizeOrdersFields(orders)),
       catchError(error => {
         console.error("Error fetching retailer orders:", error);
-        return of([]); // Return empty array on error
+        return of([]);
       })
     );
   }
 
-  getOrder(orderId: string): Observable<Order | undefined> { // Changed to Order | undefined
+  getOrder(orderId: string): Observable<Order | undefined> {
     return this.firestore.collection('orders').doc<Order>(orderId).valueChanges({ idField: 'id' })
       .pipe(
         map(order => {
           if (!order) {
             console.warn(`Order with ID ${orderId} not found.`);
-            return undefined; // Return undefined if not found
+            return undefined;
           }
-          return order;
+          return this.normalizeOrderFields(order);
         }),
         catchError(error => {
           console.error(`Error fetching order ${orderId}:`, error);
-          return of(undefined); // Return undefined on error
+          return of(undefined);
         })
       );
   }
@@ -117,9 +122,6 @@ export class OrderService {
       message: message.trim(),
       createdAt: serverTimestamp,
       seenByCustomer: false,
-      // Optionally add who updated it
-      // updatedBy: this.authService.currentUserSubject.getValue()?.uid,
-      // updatedByName: this.authService.currentUserSubject.getValue()?.displayName
     };
     batch.set(updateRef, update);
 
@@ -129,11 +131,11 @@ export class OrderService {
   getOrderUpdates(orderId: string): Observable<OrderUpdate[]> {
     return this.firestore.collection<OrderUpdate>('orderUpdates', ref =>
       ref.where('orderId', '==', orderId).orderBy('createdAt', 'desc')
-    ).valueChanges({ idField: 'id' }) // Automatically map Firestore doc ID to 'id' field
+    ).valueChanges({ idField: 'id' })
     .pipe(
       catchError(error => {
         console.error(`Error fetching order updates for ${orderId}:`, error);
-        return of([]); // Return empty array on error
+        return of([]);
       })
     );
   }
@@ -152,16 +154,66 @@ export class OrderService {
     ]).pipe(
       map(([order, updates]) => {
         if (!order) {
-          // If order is undefined (not found or error), we might not want to proceed
           console.warn(`Order ${orderId} not found for getOrderWithUpdates.`);
-          return null; // Return null if the main order isn't found
+          return null;
         }
         return { order, updates };
       }),
       catchError(error => {
         console.error(`Error in getOrderWithUpdates for ${orderId}:`, error);
-        return of(null); // Return null on combined error
+        return of(null);
       })
     );
+  }
+
+  // Helper method to normalize order fields to ensure proper typing
+  private normalizeOrderFields(order: Order): Order {
+    // Ensure formData exists and is properly typed
+    if (!order.formData) {
+      order.formData = {};
+    }
+
+    // Convert any existing field arrays to properly typed arrays
+    if ((order as any).fields && Array.isArray((order as any).fields)) {
+      order.fields = this.normalizeFieldArray((order as any).fields);
+    }
+
+    if ((order as any).customFields && Array.isArray((order as any).customFields)) {
+      order.customFields = this.normalizeFieldArray((order as any).customFields);
+    }
+
+    if ((order as any).metadata && Array.isArray((order as any).metadata)) {
+      order.metadata = this.normalizeFieldArray((order as any).metadata);
+    }
+
+    return order;
+  }
+
+  // Helper method to normalize multiple orders
+  private normalizeOrdersFields(orders: Order[]): Order[] {
+    return orders.map(order => this.normalizeOrderFields(order));
+  }
+
+  // Helper method to ensure field arrays have proper string keys
+  private normalizeFieldArray(fields: any[]): FieldData[] {
+    return fields.map(field => ({
+      key: String(field.key || ''),
+      value: field.value,
+      label: field.label,
+      type: field.type
+    }));
+  }
+
+  // Helper method to extract fields from formData as FieldData array
+  public getOrderFieldsFromFormData(order: Order): FieldData[] {
+    if (!order.formData) return [];
+    
+    return Object.entries(order.formData).map(([key, value]) => ({
+      key: String(key),
+      value: value,
+      label: key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()),
+      type: typeof value === 'number' ? 'number' : 
+            typeof value === 'boolean' ? 'boolean' : 'text'
+    }));
   }
 }

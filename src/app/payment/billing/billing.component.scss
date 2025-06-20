@@ -1,0 +1,287 @@
+// src/app/payment/billing/billing.component.scss
+.billing-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding-bottom: 20px;
+}
+
+.subscription-overview-card,
+.quick-actions-card,
+.billing-history-card,
+.billing-info-card {
+  margin-bottom: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+
+  ion-card-header {
+    padding-bottom: 8px;
+
+    ion-card-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--ion-color-dark);
+    }
+
+    ion-card-subtitle {
+      color: var(--ion-color-medium);
+      font-size: 0.9rem;
+    }
+  }
+}
+
+.subscription-overview-card {
+  .subscription-details {
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--ion-color-light);
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      .label {
+        font-weight: 500;
+        color: var(--ion-color-medium);
+      }
+
+      .value {
+        font-weight: 600;
+        color: var(--ion-color-dark);
+      }
+
+      ion-badge {
+        font-size: 0.8rem;
+      }
+    }
+  }
+}
+
+.quick-actions-card {
+  .action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    ion-button {
+      --border-radius: 8px;
+      height: 48px;
+      font-weight: 500;
+    }
+  }
+}
+
+.billing-history-card {
+  .billing-list {
+    .billing-item {
+      --padding-start: 0;
+      --padding-end: 0;
+      --inner-padding-end: 0;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--ion-color-light);
+
+      .invoice-info {
+        display: flex;
+        align-items: center;
+        margin-right: 16px;
+
+        .status-icon {
+          font-size: 24px;
+        }
+      }
+
+      ion-label {
+        h3 {
+          font-size: 1rem;
+          font-weight: 500;
+          margin: 0 0 4px 0;
+          color: var(--ion-color-dark);
+        }
+
+        p {
+          margin: 2px 0;
+          font-size: 0.85rem;
+          color: var(--ion-color-medium);
+
+          &.payment-method {
+            font-style: italic;
+          }
+        }
+      }
+
+      .invoice-actions {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 8px;
+
+        .amount-status {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 4px;
+
+          .amount {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--ion-color-dark);
+          }
+
+          .status-badge {
+            font-size: 0.75rem;
+          }
+        }
+
+        .action-buttons {
+          display: flex;
+          gap: 4px;
+
+          ion-button {
+            --padding-start: 8px;
+            --padding-end: 8px;
+            width: 40px;
+            height: 36px;
+
+            ion-icon {
+              font-size: 18px;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--ion-color-medium);
+
+    ion-icon {
+      margin-bottom: 16px;
+      color: var(--ion-color-light-shade);
+    }
+
+    h3 {
+      margin: 0 0 8px 0;
+      font-size: 1.1rem;
+      color: var(--ion-color-medium);
+    }
+
+    p {
+      margin: 0;
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+  }
+}
+
+.billing-info-card {
+  .info-section {
+    margin-bottom: 24px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    h4 {
+      margin: 0 0 12px 0;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--ion-color-dark);
+    }
+
+    p {
+      margin: 0 0 12px 0;
+      line-height: 1.5;
+      color: var(--ion-color-medium);
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 20px;
+      color: var(--ion-color-medium);
+
+      li {
+        margin-bottom: 8px;
+        line-height: 1.4;
+      }
+    }
+
+    .contact-options {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+
+      ion-button {
+        --border-radius: 6px;
+        height: 36px;
+      }
+    }
+  }
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--ion-color-medium);
+
+  ion-spinner {
+    margin-bottom: 16px;
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .billing-container {
+    padding: 0 8px;
+  }
+
+  .quick-actions-card .action-buttons {
+    ion-button {
+      height: 44px;
+    }
+  }
+
+  .billing-history-card .billing-item {
+    .invoice-actions {
+      .action-buttons {
+        ion-button {
+          width: 36px;
+          height: 32px;
+
+          ion-icon {
+            font-size: 16px;
+          }
+        }
+      }
+    }
+  }
+
+  .billing-info-card .info-section .contact-options {
+    flex-direction: column;
+
+    ion-button {
+      width: 100%;
+    }
+  }
+}
+
+// Dark mode support
+@media (prefers-color-scheme: dark) {
+  .subscription-overview-card,
+  .quick-actions-card,
+  .billing-history-card,
+  .billing-info-card {
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  }
+
+  .billing-history-card .billing-item {
+    border-color: var(--ion-color-dark);
+  }
+}

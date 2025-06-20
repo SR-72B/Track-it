@@ -1,5 +1,3 @@
-// src/app/customer/place-order/place-order.component.html
-`
 <ion-header>
   <ion-toolbar color="primary">
     <ion-buttons slot="start">
@@ -10,7 +8,7 @@
 </ion-header>
 
 <ion-content class="ion-padding">
-  <ng-container *ngIf="orderForm$ | async as orderForm; else loading">
+  <ng-container *ngIf="orderForm; else loading">
     <div class="form-header">
       <h1>{{ orderForm.title }}</h1>
       <p *ngIf="orderForm.description">{{ orderForm.description }}</p>
@@ -50,7 +48,7 @@
           </ion-radio-group>
         </ion-list>
 
-        <ion-text color="danger" *ngIf="dynamicForm.get(field.label)?.touched && dynamicForm.get(field.label)?.errors?.required">
+        <ion-text color="danger" *ngIf="dynamicForm.get(field.label)?.touched && dynamicForm.get(field.label)?.hasError('required')">
           <p class="error-message">{{ field.label }} is required</p>
         </ion-text>
       </ng-container>
@@ -59,11 +57,11 @@
         <ion-item-divider>File Upload</ion-item-divider>
         
         <ion-item>
-          <ion-label>Allowed file types: {{ orderForm.allowedFileTypes.join(', ') }}</ion-label>
+          <ion-label>Allowed file types: {{ orderForm.allowedFileTypes?.join(', ') }}</ion-label>
         </ion-item>
         
         <div class="file-input-container">
-          <ion-button color="medium" (click)="fileInput.click()">
+          <ion-button color="medium" (click)="triggerFileInput()">
             <ion-icon name="cloud-upload" slot="start"></ion-icon>
             Select Files
           </ion-button>
@@ -72,11 +70,10 @@
             type="file" 
             style="display: none;" 
             (change)="onFileSelected($event)" 
-            [accept]="orderForm.allowedFileTypes.map(type => '.' + type).join(',')"
             multiple>
         </div>
 
-        <ion-list *ngIf="selectedFiles.length > 0">
+        <ion-list *ngIf="selectedFiles && selectedFiles.length > 0">
           <ion-item *ngFor="let file of selectedFiles; let i = index">
             <ion-label>
               <h3>{{ file.name }}</h3>
@@ -89,7 +86,7 @@
         </ion-list>
       </div>
 
-      <div class="cancellation-policy">
+      <div class="cancellation-policy" *ngIf="orderForm.cancellationPolicy">
         <ion-item-divider>Cancellation Policy</ion-item-divider>
         <p>{{ orderForm.cancellationPolicy }}</p>
       </div>
@@ -107,4 +104,3 @@
     </div>
   </ng-template>
 </ion-content>
-`

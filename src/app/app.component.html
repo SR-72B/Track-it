@@ -1,28 +1,113 @@
-// src/app/app.component.html
-`
+<!-- src/app/app.component.html -->
 <ion-app>
-  <ion-split-pane contentId="main-content">
-    <ion-menu contentId="main-content" type="overlay">
+  <ion-split-pane contentId="main-content" when="md">
+    <ion-menu contentId="main-content" type="overlay" [disabled]="!currentUser">
+      <ion-header>
+        <ion-toolbar color="primary">
+          <ion-title>Track It</ion-title>
+        </ion-toolbar>
+      </ion-header>
+      
       <ion-content>
-        <ion-list id="inbox-list">
-          <ion-list-header>Track it</ion-list-header>
-          <ion-note>Order Management System</ion-note>
+        <!-- User Profile Section -->
+        <div class="user-profile-section" *ngIf="currentUser">
+          <ion-item lines="none" class="user-profile-item">
+            <ion-avatar slot="start">
+              <img [src]="currentUser.profileImageUrl || 'assets/images/default-avatar.png'" 
+                   [alt]="getDisplayName()" 
+                   (error)="$event.target.src='assets/images/default-avatar.png'">
+            </ion-avatar>
+            <ion-label>
+              <h2>{{ getDisplayName() }}</h2>
+              <p>{{ getAccountType() }}</p>
+              <p class="user-email">{{ currentUser.email }}</p>
+            </ion-label>
+            <ion-badge 
+              [color]="currentUser.emailVerified ? 'success' : 'warning'" 
+              slot="end">
+              {{ currentUser.emailVerified ? 'Verified' : 'Unverified' }}
+            </ion-badge>
+          </ion-item>
+        </div>
+
+        <!-- Navigation Menu -->
+        <ion-list id="navigation-list" *ngIf="currentUser">
+          <ion-list-header>
+            <ion-label>Navigation</ion-label>
+          </ion-list-header>
 
           <ion-menu-toggle auto-hide="false" *ngFor="let page of isRetailer ? retailerPages : customerPages">
-            <ion-item routerDirection="root" [routerLink]="[page.url]" lines="none" detail="false" routerLinkActive="selected">
+            <ion-item 
+              routerDirection="root" 
+              [routerLink]="[page.url]" 
+              lines="none" 
+              detail="false" 
+              routerLinkActive="selected"
+              (click)="navigateToPage(page.url)">
               <ion-icon slot="start" [name]="page.icon"></ion-icon>
               <ion-label>{{ page.title }}</ion-label>
             </ion-item>
           </ion-menu-toggle>
+        </ion-list>
 
-          <ion-item lines="none" detail="false" button (click)="logout()">
-            <ion-icon slot="start" name="log-out"></ion-icon>
+        <!-- Account Actions -->
+        <ion-list id="account-actions" *ngIf="currentUser">
+          <ion-list-header>
+            <ion-label>Account</ion-label>
+          </ion-list-header>
+
+          <ion-item lines="none" detail="false" button (click)="navigateToPage('/settings')">
+            <ion-icon slot="start" name="settings-outline"></ion-icon>
+            <ion-label>Settings</ion-label>
+          </ion-item>
+
+          <ion-item lines="none" detail="false" button (click)="navigateToPage('/help')">
+            <ion-icon slot="start" name="help-circle-outline"></ion-icon>
+            <ion-label>Help & Support</ion-label>
+          </ion-item>
+
+          <ion-item lines="none" detail="false" button (click)="logout()" class="logout-item">
+            <ion-icon slot="start" name="log-out-outline"></ion-icon>
             <ion-label>Logout</ion-label>
           </ion-item>
         </ion-list>
+
+        <!-- Loading State -->
+        <div class="loading-state" *ngIf="isLoading">
+          <ion-item lines="none">
+            <ion-spinner slot="start" name="dots"></ion-spinner>
+            <ion-label>Loading...</ion-label>
+          </ion-item>
+        </div>
+
+        <!-- Not Authenticated State -->
+        <div class="not-authenticated" *ngIf="!currentUser && !isLoading">
+          <ion-item lines="none">
+            <ion-icon slot="start" name="person-outline"></ion-icon>
+            <ion-label>
+              <h3>Not Logged In</h3>
+              <p>Please log in to access the menu</p>
+            </ion-label>
+          </ion-item>
+        </div>
       </ion-content>
+
+      <!-- Menu Footer -->
+      <ion-footer *ngIf="currentUser">
+        <ion-toolbar color="light">
+          <ion-title size="small">Track It v1.0</ion-title>
+        </ion-toolbar>
+      </ion-footer>
     </ion-menu>
+
+    <!-- Main Content -->
     <ion-router-outlet id="main-content"></ion-router-outlet>
   </ion-split-pane>
+
+  <!-- Loading Overlay -->
+  <div class="app-loading-overlay" *ngIf="isLoading">
+    <ion-spinner name="crescent" color="primary"></ion-spinner>
+    <p>Loading application...</p>
+  </div>
 </ion-app>
-`
+

@@ -8,13 +8,13 @@ import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-email-verification',
-  templateUrl: './email-verification.component.html', // Ensure this file exists (as in Canvas: email_verification_html_updated)
-  styleUrls: ['./email-verification.component.scss'],   // Ensure this file exists
-  standalone: true, // Mark component as standalone
+  templateUrl: './email-verification.component.html',
+  styleUrls: ['./email-verification.component.scss'],
+  standalone: true,
   imports: [
-    CommonModule,     // For *ngIf, *ngFor, async pipe, etc.
-    IonicModule,      // For Ionic components and services like AlertController
-    RouterModule      // For routerLink, routerOutlet (if used directly in this component's template)
+    CommonModule,
+    IonicModule,
+    RouterModule
   ]
 })
 export class EmailVerificationComponent implements OnInit, OnDestroy {
@@ -46,7 +46,8 @@ export class EmailVerificationComponent implements OnInit, OnDestroy {
 
   async verifyEmail(code: string) {
     this.verifying = true;
-    this.error = null; // Reset error before attempting
+    this.error = null;
+    
     try {
       await this.afAuth.applyActionCode(code);
       this.verified = true;
@@ -60,7 +61,8 @@ export class EmailVerificationComponent implements OnInit, OnDestroy {
           {
             text: 'Go to Login',
             handler: () => {
-              this.router.navigate(['/auth/login']); // Ensure this is your correct login route
+              this.router.navigate(['/auth/login']);
+              return true; // Fixed: Added return value
             }
           }
         ]
@@ -69,7 +71,7 @@ export class EmailVerificationComponent implements OnInit, OnDestroy {
     } catch (err: any) {
       this.error = err.message || 'An unknown error occurred during email verification. The link may be invalid or expired.';
       this.verifying = false;
-      this.verified = false; // Ensure verified is false on error
+      this.verified = false;
       this.showErrorAlert(this.error);
     }
   }
@@ -84,7 +86,6 @@ export class EmailVerificationComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
-    // Unsubscribe from observables to prevent memory leaks
     if (this.queryParamsSubscription) {
       this.queryParamsSubscription.unsubscribe();
     }

@@ -9,6 +9,25 @@ import { Order, OrderUpdate } from '../../retailer/order-management/order.servic
 import { Observable, Subscription, of, firstValueFrom } from 'rxjs';
 import { map, finalize, tap, catchError } from 'rxjs/operators';
 
+// Add these interfaces to fix the titlecase pipe error
+interface FieldData {
+  key: string;
+  value: string | number | boolean | null;
+  label?: string;
+  type?: string;
+}
+
+interface OrderWithTypedFields extends Order {
+  fields?: FieldData[];
+  customFields?: FieldData[];
+  metadata?: FieldData[];
+}
+
+interface StatusStep {
+  status: string;
+  label: string;
+}
+
 @Component({
   selector: 'app-order-tracking',
   templateUrl: './order-tracking.component.html',
@@ -22,12 +41,12 @@ import { map, finalize, tap, catchError } from 'rxjs/operators';
 })
 export class OrderTrackingComponent implements OnInit, OnDestroy {
   orderId: string | null = null;
-  order$: Observable<Order | null | undefined> = of(undefined);
+  order$: Observable<OrderWithTypedFields | null | undefined> = of(undefined);
   updates$: Observable<OrderUpdate[]> = of([]);
   isLoading = true;
   errorMessage: string | null = null;
 
-  statusSteps = [
+  statusSteps: StatusStep[] = [
     { status: 'pending', label: 'Pending' },
     { status: 'processing', label: 'Processing' },
     { status: 'shipped', label: 'Shipped' },
@@ -131,6 +150,22 @@ export class OrderTrackingComponent implements OnInit, OnDestroy {
         return of([]);
       })
     );
+  }
+
+  // Add this helper method to safely get fields with proper typing
+  public getOrderFields(order: Order | undefined | null): FieldData[] {
+    if (!order) return [];
+    
+    // Check different possible field properties and ensure they're properly typed
+    const fields = (order as any).fields || (order as any).customFields || (order as any).metadata || [];
+    
+    // Ensure each field has a string key
+    return fields.map((field: any) => ({
+      key: String(field.key || ''),
+      value: field.value,
+      label: field.label,
+      type: field.type
+    }));
   }
 
   formatDate(dateInput: any): string {

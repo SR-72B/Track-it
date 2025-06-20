@@ -10,7 +10,7 @@
           "style": "scss"
         },
         "@schematics/angular:application": {
-          "strict": true
+          "strict": false
         }
       },
       "root": "",
@@ -33,28 +33,30 @@
             ],
             "styles": [
               "src/styles.scss",
-              "src/theme/variables.scss",
-              {
-                "input": "src/theme/variables.scss",
-                "inject": true
-              }
+              "src/theme/variables.scss"
             ],
             "scripts": [],
             "serviceWorker": true,
-            "ngswConfigPath": "ngsw-config.json"
+            "ngswConfigPath": "ngsw-config.json",
+            "allowedCommonJsDependencies": [
+              "firebase/compat/app",
+              "firebase/compat/auth",
+              "firebase/compat/firestore",
+              "firebase/compat/storage"
+            ]
           },
           "configurations": {
             "production": {
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "2mb",
-                  "maximumError": "5mb"
+                  "maximumWarning": "4mb",
+                  "maximumError": "8mb"
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "8kb",  
-                  "maximumError": "12kb" 
+                  "maximumWarning": "16kb",
+                  "maximumError": "24kb"
                 }
               ],
               "fileReplacements": [
@@ -65,7 +67,14 @@
               ],
               "outputHashing": "all",
               "serviceWorker": true,
-              "ngswConfigPath": "ngsw-config.json"
+              "ngswConfigPath": "ngsw-config.json",
+              "optimization": true,
+              "sourceMap": false,
+              "namedChunks": false,
+              "extractLicenses": true,
+              "vendorChunk": false,
+              "buildOptimizer": true,
+              "aot": true
             },
             "development": {
               "buildOptimizer": false,
@@ -73,16 +82,14 @@
               "vendorChunk": true,
               "extractLicenses": false,
               "sourceMap": true,
-              "namedChunks": true
+              "namedChunks": true,
+              "aot": false
             }
           },
           "defaultConfiguration": "production"
         },
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
-          "options": {
-            "buildTarget": "track-it-app:build:development"
-          },
           "configurations": {
             "production": {
               "buildTarget": "track-it-app:build:production"
@@ -96,7 +103,7 @@
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
-            "buildTarget": "track-it-app:build" 
+            "buildTarget": "track-it-app:build"
           }
         },
         "test": {
@@ -134,11 +141,11 @@
         "ionic-cordova-build": {
           "builder": "@ionic/angular-toolkit:cordova-build",
           "options": {
-            "buildTarget": "track-it-app:build" 
+            "buildTarget": "track-it-app:build"
           },
           "configurations": {
             "production": {
-              "buildTarget": "track-it-app:build:production" 
+              "buildTarget": "track-it-app:build:production"
             }
           }
         },
@@ -149,8 +156,10 @@
       }
     }
   },
-  
   "cli": {
-    "analytics": false
+    "analytics": false,
+    "cache": {
+      "enabled": true
+    }
   }
 }

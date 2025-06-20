@@ -8,14 +8,14 @@ import { AuthService } from '../auth.service';
 
 @Component({
   selector: 'app-signup',
-  templateUrl: './signup.component.html', // Ensure this file exists
-  styleUrls: ['./signup.component.scss'],   // Ensure this file exists
+  templateUrl: './signup.component.html',
+  styleUrls: ['./signup.component.scss'],
   standalone: true,
   imports: [
     CommonModule,
     ReactiveFormsModule,
     IonicModule,
-    RouterModule // For routerLink if used in template (e.g., for "Go to Login")
+    RouterModule
   ]
 })
 export class SignupComponent implements OnInit {
@@ -39,7 +39,7 @@ export class SignupComponent implements OnInit {
       email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(6)]],
       confirmPassword: ['', Validators.required],
-      accountType: ['customer', Validators.required] // Default to customer
+      accountType: ['customer', Validators.required]
     }, { validators: this.checkPasswords });
   }
 
@@ -69,7 +69,6 @@ export class SignupComponent implements OnInit {
 
     try {
       const { displayName, email, password, accountType } = this.signupForm.value;
-      // Ensure your AuthService.signup method accepts displayName and accountType
       await this.authService.signup(email, password, displayName, accountType);
       
       await loading.dismiss();
@@ -82,19 +81,21 @@ export class SignupComponent implements OnInit {
         buttons: [{
           text: 'OK, Go to Login',
           handler: () => {
-            this.router.navigate(['/auth/login']); // Navigate to login page
+            this.router.navigate(['/auth/login']);
+            return true; // Fixed: Added return value
           }
         }]
       });
       await alert.present();
-      this.signupForm.reset(); // Reset form after successful signup
+      this.signupForm.reset();
 
     } catch (error: any) {
       await loading.dismiss();
       this.isSubmitting = false;
       console.error('Signup error:', error);
       let errorMessage = 'An unexpected error occurred. Please try again.';
-      if (error.code) { // Firebase auth errors often have a 'code' property
+      
+      if (error.code) {
         switch (error.code) {
           case 'auth/email-already-in-use':
             errorMessage = 'This email address is already in use by another account.';
@@ -119,7 +120,7 @@ export class SignupComponent implements OnInit {
   }
 
   goToLogin() {
-    this.router.navigate(['/auth/login']); // Ensure this route is defined
+    this.router.navigate(['/auth/login']);
   }
 
   markFormGroupTouched(formGroup: FormGroup) {

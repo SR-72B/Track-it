@@ -1,13 +1,27 @@
 // src/app/customer/order-detail/customer-order-detail.component.ts
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { CommonModule } from '@angular/common'; // Removed CurrencyPipe import as it should not be in imports array
+import { CommonModule } from '@angular/common';
 import { AlertController, LoadingController, ToastController, IonicModule } from '@ionic/angular';
 import { Observable, Subscription, firstValueFrom, of } from 'rxjs';
 import { finalize, catchError, tap } from 'rxjs/operators';
 
 import { Order, OrderUpdate } from '../../retailer/order-management/order.service';
 import { CustomerOrderService } from '../order/customer-order.service';
+
+// Add these interfaces to fix the titlecase pipe error
+interface FieldData {
+  key: string;
+  value: string | number | boolean | null;
+  label?: string;
+  type?: string;
+}
+
+interface OrderWithTypedFields extends Order {
+  fields?: FieldData[];
+  customFields?: FieldData[];
+  metadata?: FieldData[];
+}
 
 @Component({
   selector: 'app-customer-order-detail',
@@ -22,7 +36,7 @@ import { CustomerOrderService } from '../order/customer-order.service';
 })
 export class CustomerOrderDetailComponent implements OnInit, OnDestroy {
   orderId: string | null = null;
-  orderData$: Observable<{order: Order, updates: OrderUpdate[]} | null > = of(null);
+  orderData$: Observable<{order: OrderWithTypedFields, updates: OrderUpdate[]} | null > = of(null);
   isLoading = true;
   isCancelling = false;
   errorMessage: string | null = null;
@@ -73,7 +87,7 @@ export class CustomerOrderDetailComponent implements OnInit, OnDestroy {
           firstValueFrom(this.customerOrderService.markUpdatesSeen(this.orderId))
             .catch(error => console.warn('Failed to mark updates as seen:', error));
         }
-        this.isLoading = false; // Set loading false after data is processed
+        this.isLoading = false;
         this.cdr.detectChanges();
       }),
       catchError(err => {
@@ -83,7 +97,7 @@ export class CustomerOrderDetailComponent implements OnInit, OnDestroy {
         this.cdr.detectChanges();
         return of(null);
       }),
-      finalize(() => { // Finalize runs on completion or error
+      finalize(() => {
         if (refresherEvent) {
           refresherEvent.target.complete();
         }
@@ -91,7 +105,21 @@ export class CustomerOrderDetailComponent implements OnInit, OnDestroy {
     );
   }
 
-  // --- METHODS REQUIRED BY THE TEMPLATE ---
+  // Add this helper method to safely get fields with proper typing
+  public getOrderFields(order: Order | undefined | null): FieldData[] {
+    if (!order) return [];
+    
+    // Check different possible field properties and ensure they're properly typed
+    const fields = (order as any).fields || (order as any).customFields || (order as any).metadata || [];
+    
+    // Ensure each field has a string key
+    return fields.map((field: any) => ({
+      key: String(field.key || ''),
+      value: field.value,
+      label: field.label,
+      type: field.type
+    }));
+  }
 
   public getStatusColor(status: string | undefined): string {
     if (!status) return 'medium';

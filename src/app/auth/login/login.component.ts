@@ -4,19 +4,19 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, AbstractContro
 import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AlertController, LoadingController, ToastController, IonicModule } from '@ionic/angular';
-import { AuthService, User } from '../auth.service'; // Assuming User interface is exported from AuthService
+import { AuthService, User } from '../auth.service';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-login',
-  templateUrl: './login.component.html', // Ensure this file exists
-  styleUrls: ['./login.component.scss'],   // Ensure this file exists
+  templateUrl: './login.component.html',
+  styleUrls: ['./login.component.scss'],
   standalone: true,
   imports: [
     CommonModule,
     ReactiveFormsModule,
     IonicModule,
-    RouterModule // For routerLink used in goToSignup() or forgotPassword() in template
+    RouterModule
   ]
 })
 export class LoginComponent implements OnInit {
@@ -61,8 +61,6 @@ export class LoginComponent implements OnInit {
       if (result && result.user) {
         if (result.user.emailVerified) {
           try {
-            // Assuming AuthService.getUserData returns Observable<User | undefined>
-            // and User interface includes accountType.
             const userData = await firstValueFrom(this.authService.getUserData(result.user.uid));
 
             await loading.dismiss();
@@ -70,8 +68,8 @@ export class LoginComponent implements OnInit {
 
             if (userData && userData.accountType === 'retailer') {
               this.router.navigate(['/retailer/dashboard']);
-            } else if (userData) { // For customer or any other authenticated user
-              this.router.navigate(['/customer/dashboard']); // Or your preferred default customer route
+            } else if (userData) {
+              this.router.navigate(['/customer/dashboard']);
             } else {
               console.error('User data not found in Firestore after login for UID:', result.user.uid);
               await this.authService.logout();
@@ -82,12 +80,12 @@ export class LoginComponent implements OnInit {
             this.isSubmitting = false;
             console.error('Error fetching user data from Firestore:', userDataError);
             this.showErrorAlert('Login Issue', 'Logged in, but failed to retrieve account details. Please try again.');
-            await this.authService.logout(); // Log out if crucial data is missing
+            await this.authService.logout();
           }
         } else {
           await loading.dismiss();
           this.isSubmitting = false;
-          await this.authService.logout(); // Log out user if email is not verified
+          await this.authService.logout();
 
           const alert = await this.alertController.create({
             header: 'Email Verification Required',
@@ -100,9 +98,11 @@ export class LoginComponent implements OnInit {
                   try {
                     await this.authService.sendVerificationEmail();
                     this.showToast('Verification email sent. Please check your inbox (and spam folder).', 'success', 5000);
+                    return true; // Fixed: Added return value
                   } catch (resendError: any) {
                     this.showToast(`Failed to resend verification email: ${resendError.message || 'Unknown error'}.`, 'danger', 5000);
                     console.error('Failed to resend verification email', resendError);
+                    return false; // Fixed: Added return value
                   }
                 }
               },
@@ -112,8 +112,6 @@ export class LoginComponent implements OnInit {
           await alert.present();
         }
       } else {
-        // This case implies authService.login resolved without a user, which is unusual.
-        // Typically, login errors are thrown and caught by the outer catch block.
         await loading.dismiss();
         this.isSubmitting = false;
         throw new Error('Login failed: No user object returned from authentication service.');
@@ -123,7 +121,7 @@ export class LoginComponent implements OnInit {
       this.isSubmitting = false;
       console.error('Login error caught in component:', error);
       let errorMessage = 'An unexpected error occurred. Please try again.';
-      if (error.code) { // Firebase auth errors often have a 'code' property
+      if (error.code) {
         switch (error.code) {
           case 'auth/user-not-found':
           case 'auth/wrong-password':
@@ -147,7 +145,7 @@ export class LoginComponent implements OnInit {
   }
 
   goToSignup() {
-    this.router.navigate(['/auth/signup']); // Ensure this route is defined in your auth.routes.ts or app.routes.ts
+    this.router.navigate(['/auth/signup']);
   }
 
   async forgotPassword() {
@@ -174,6 +172,7 @@ export class LoginComponent implements OnInit {
                 await this.authService.resetPassword(data.email);
                 await loading.dismiss();
                 this.showToast('Password reset email sent. Check your inbox (and spam folder).', 'success', 5000);
+                return true; // Fixed: Added return value
               } catch (error: any) {
                 await loading.dismiss();
                 let resetErrorMessage = 'Could not send reset email. Please try again.';
@@ -183,10 +182,11 @@ export class LoginComponent implements OnInit {
                   resetErrorMessage = error.message;
                 }
                 this.showErrorAlert('Password Reset Error', resetErrorMessage);
+                return false; // Fixed: Added return value
               }
             } else {
               this.showToast('Please enter a valid email address.', 'warning');
-              return false; // Prevent alert from dismissing
+              return false;
             }
           }
         }
@@ -223,4 +223,3 @@ export class LoginComponent implements OnInit {
     await alert.present();
   }
 }
-

@@ -1,0 +1,223 @@
+<!-- src/app/payment/payment-methods/payment-methods.component.html -->
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/payment/billing"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Payment Methods</ion-title>
+    <ion-buttons slot="end">
+      <ion-button fill="clear" (click)="toggleAddCard()" *ngIf="!isAddingCard">
+        <ion-icon name="add"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <div class="payment-methods-container">
+    
+    <!-- Add New Card Form -->
+    <ion-card class="add-card-form" *ngIf="isAddingCard">
+      <ion-card-header>
+        <ion-card-title>Add New Payment Method</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <form [formGroup]="cardForm" (ngSubmit)="addPaymentMethod()">
+          
+          <!-- Card Number -->
+          <ion-item lines="none">
+            <ion-label position="stacked">Card Number *</ion-label>
+            <ion-input 
+              formControlName="cardNumber"
+              placeholder="1234 5678 9012 3456"
+              maxlength="19"
+              (input)="formatCardNumber($event)">
+            </ion-input>
+          </ion-item>
+          <div class="error-message" *ngIf="getFieldError('cardNumber')">
+            {{ getFieldError('cardNumber') }}
+          </div>
+
+          <!-- Expiry and CVC -->
+          <div class="form-row">
+            <div class="form-col">
+              <ion-item lines="none">
+                <ion-label position="stacked">Expiry Month *</ion-label>
+                <ion-select formControlName="expiryMonth" placeholder="MM">
+                  <ion-select-option *ngFor="let month of months" [value]="month.value">
+                    {{ month.label }}
+                  </ion-select-option>
+                </ion-select>
+              </ion-item>
+              <div class="error-message" *ngIf="getFieldError('expiryMonth')">
+                {{ getFieldError('expiryMonth') }}
+              </div>
+            </div>
+            
+            <div class="form-col">
+              <ion-item lines="none">
+                <ion-label position="stacked">Expiry Year *</ion-label>
+                <ion-select formControlName="expiryYear" placeholder="YYYY">
+                  <ion-select-option *ngFor="let year of years" [value]="year.value">
+                    {{ year.label }}
+                  </ion-select-option>
+                </ion-select>
+              </ion-item>
+              <div class="error-message" *ngIf="getFieldError('expiryYear')">
+                {{ getFieldError('expiryYear') }}
+              </div>
+            </div>
+            
+            <div class="form-col">
+              <ion-item lines="none">
+                <ion-label position="stacked">CVC *</ion-label>
+                <ion-input 
+                  formControlName="cvc"
+                  placeholder="123"
+                  maxlength="4"
+                  type="password">
+                </ion-input>
+              </ion-item>
+              <div class="error-message" *ngIf="getFieldError('cvc')">
+                {{ getFieldError('cvc') }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Cardholder Name -->
+          <ion-item lines="none">
+            <ion-label position="stacked">Cardholder Name *</ion-label>
+            <ion-input 
+              formControlName="name"
+              placeholder="John Doe">
+            </ion-input>
+          </ion-item>
+          <div class="error-message" *ngIf="getFieldError('name')">
+            {{ getFieldError('name') }}
+          </div>
+
+          <!-- Set as Default -->
+          <ion-item lines="none">
+            <ion-checkbox formControlName="isDefault" slot="start"></ion-checkbox>
+            <ion-label>Set as default payment method</ion-label>
+          </ion-item>
+
+          <!-- Form Actions -->
+          <div class="form-actions">
+            <ion-button 
+              expand="block" 
+              type="submit"
+              [disabled]="cardForm.invalid || isLoading">
+              <ion-spinner *ngIf="isLoading" name="dots"></ion-spinner>
+              <span *ngIf="!isLoading">Add Payment Method</span>
+            </ion-button>
+            <ion-button 
+              expand="block" 
+              fill="outline" 
+              color="medium"
+              type="button"
+              (click)="toggleAddCard()">
+              Cancel
+            </ion-button>
+          </div>
+        </form>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Existing Payment Methods -->
+    <ion-card class="payment-methods-list" *ngIf="paymentMethods.length > 0">
+      <ion-card-header>
+        <ion-card-title>Your Payment Methods</ion-card-title>
+        <ion-card-subtitle>Manage your saved payment methods</ion-card-subtitle>
+      </ion-card-header>
+      <ion-card-content>
+        
+        <div class="payment-method-item" *ngFor="let method of paymentMethods">
+          <div class="method-info">
+            <div class="card-icon">
+              <ion-icon [name]="getCardIcon(method.brand)"></ion-icon>
+            </div>
+            
+            <div class="card-details">
+              <h3>{{ method.brand | titlecase }} •••• {{ method.last4 }}</h3>
+              <p>Expires {{ method.expiryMonth }}/{{ method.expiryYear }}</p>
+              <p class="cardholder-name">{{ method.name }}</p>
+            </div>
+            
+            <div class="method-status">
+              <ion-badge color="success" *ngIf="method.isDefault">Default</ion-badge>
+            </div>
+          </div>
+          
+          <div class="method-actions">
+            <ion-button 
+              fill="clear" 
+              size="small"
+              (click)="setDefaultPaymentMethod(method)"
+              *ngIf="!method.isDefault">
+              <ion-icon name="star-outline" slot="icon-only"></ion-icon>
+            </ion-button>
+            
+            <ion-button 
+              fill="clear" 
+              size="small" 
+              color="danger"
+              (click)="deletePaymentMethod(method)">
+              <ion-icon name="trash-outline" slot="icon-only"></ion-icon>
+            </ion-button>
+          </div>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Empty State -->
+    <ion-card class="empty-state-card" *ngIf="paymentMethods.length === 0 && !isAddingCard">
+      <ion-card-content>
+        <div class="empty-state">
+          <ion-icon name="card-outline" size="large"></ion-icon>
+          <h3>No Payment Methods</h3>
+          <p>Add a payment method to manage your subscription and billing.</p>
+          <ion-button expand="block" (click)="toggleAddCard()">
+            <ion-icon name="add" slot="start"></ion-icon>
+            Add Payment Method
+          </ion-button>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Security Information -->
+    <ion-card class="security-info-card">
+      <ion-card-header>
+        <ion-card-title>Security & Privacy</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="security-features">
+          <div class="feature-item">
+            <ion-icon name="shield-checkmark" color="success"></ion-icon>
+            <div class="feature-text">
+              <h4>Secure Encryption</h4>
+              <p>All payment data is encrypted and securely stored</p>
+            </div>
+          </div>
+          
+          <div class="feature-item">
+            <ion-icon name="lock-closed" color="success"></ion-icon>
+            <div class="feature-text">
+              <h4>PCI Compliant</h4>
+              <p>We follow industry-standard security practices</p>
+            </div>
+          </div>
+          
+          <div class="feature-item">
+            <ion-icon name="eye-off" color="success"></ion-icon>
+            <div class="feature-text">
+              <h4>Privacy Protected</h4>
+              <p>We never store your full card details</p>
+            </div>
+          </div>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+  </div>
+</ion-content>
