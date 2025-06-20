@@ -118,7 +118,7 @@
             <ion-list lines="none" *ngIf="order.formData && (order.formData | keyvalue).length > 0">
               <ion-item *ngFor="let field of order.formData | keyvalue">
                 <ion-label class="ion-text-wrap">
-                  <h3 class="form-data-key">{{ (field.key as string) | titlecase }}</h3>
+                  <h3 class="form-data-key">{{ field.key | titlecase }}</h3>
                   <p class="form-data-value">{{ field.value }}</p>
                 </ion-label>
               </ion-item>
@@ -149,3 +149,4 @@
   </ng-template>
 
 </ion-content>
+

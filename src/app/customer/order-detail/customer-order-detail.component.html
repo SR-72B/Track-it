@@ -28,10 +28,8 @@
   </div>
 
   <ng-container *ngIf="orderData$ | async as orderDataResult; else noDataState">
-    <!-- Main content container, only renders if orderData$ has emitted a non-null value -->
     <ng-container *ngIf="orderDataResult && orderDataResult.order; else noSpecificOrderData">
 
-      <!-- Order Summary Card -->
       <ion-card class="order-summary-card">
         <ion-card-header>
           <ion-card-subtitle>Order #{{ orderDataResult.order.id?.substring(0, 8) }}</ion-card-subtitle>
@@ -44,7 +42,6 @@
         </ion-card-header>
       </ion-card>
 
-      <!-- Submitted Form Data Card -->
       <ion-card class="form-data-card" *ngIf="orderDataResult.order.formData && (orderDataResult.order.formData | keyvalue).length > 0">
         <ion-card-header>
           <ion-card-title>Submitted Details</ion-card-title>
@@ -53,7 +50,7 @@
           <ion-list lines="none">
             <ion-item *ngFor="let field of orderDataResult.order.formData | keyvalue">
               <ion-label class="ion-text-wrap">
-                <h3>{{ (field.key as string) | titlecase }}</h3>
+                <h3>{{ field.key | titlecase }}</h3>
                 <p>{{ field.value }}</p>
               </ion-label>
             </ion-item>
@@ -61,7 +58,6 @@
         </ion-card-content>
       </ion-card>
 
-      <!-- Attached Files Card -->
       <ion-card class="attached-files-card" *ngIf="orderDataResult.order.fileUrls && orderDataResult.order.fileUrls.length > 0">
         <ion-card-header>
           <ion-card-title>Attached Files</ion-card-title>
@@ -77,7 +73,6 @@
         </ion-card-content>
       </ion-card>
 
-      <!-- Order Updates Card -->
       <ion-card class="order-updates-card" *ngIf="orderDataResult.updates && orderDataResult.updates.length > 0; else noUpdates">
         <ion-card-header>
           <ion-card-title>Order History & Updates</ion-card-title>
@@ -114,7 +109,6 @@
         </ion-card>
       </ng-template>
 
-      <!-- Action Buttons -->
       <div class="action-buttons ion-padding-top" *ngIf="orderDataResult.order.status !== 'cancelled' && orderDataResult.order.status !== 'delivered' && orderDataResult.order.status !== 'completed'">
         <ion-button
           expand="block"
@@ -131,7 +125,7 @@
         </div>
       </div>
 
-    </ng-container> <!-- This closes *ngIf="orderDataResult && orderDataResult.order" -->
+    </ng-container>
 
     <ng-template #noSpecificOrderData>
       <div *ngIf="!isLoading && !errorMessage" class="ion-text-center ion-padding">
@@ -140,7 +134,7 @@
         <p>The requested order details could not be found.</p>
       </div>
     </ng-template>
-  </ng-container> <!-- This closes *ngIf="orderData$ | async as orderDataResult" -->
+  </ng-container>
 
   <ng-template #noDataState>
     <div *ngIf="!isLoading && !errorMessage" class="ion-text-center ion-padding">
