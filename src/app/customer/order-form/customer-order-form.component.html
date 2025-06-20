@@ -5,38 +5,38 @@
         <ng-container [ngSwitch]="field.type">
 
           <!-- Text Inputs -->
-          <ion-input *ngSwitchCase="'text'" [formControlName]="field.id || (field.label | lowercase | replace:' ':'-')" type="text"
+          <ion-input *ngSwitchCase="'text'" [formControlName]="getControlName(field)" type="text"
             [label]="field.label + (field.required ? ' *' : '')"
             labelPlacement="floating"
             [placeholder]="field.placeholder || ''"></ion-input>
 
-          <ion-input *ngSwitchCase="'email'" [formControlName]="field.id || (field.label | lowercase | replace:' ':'-')" type="email"
+          <ion-input *ngSwitchCase="'email'" [formControlName]="getControlName(field)" type="email"
             [label]="field.label + (field.required ? ' *' : '')"
             labelPlacement="floating"
             [placeholder]="field.placeholder || ''"></ion-input>
 
-          <ion-input *ngSwitchCase="'number'" [formControlName]="field.id || (field.label | lowercase | replace:' ':'-')" type="number"
+          <ion-input *ngSwitchCase="'number'" [formControlName]="getControlName(field)" type="number"
             [label]="field.label + (field.required ? ' *' : '')"
             labelPlacement="floating"
             [placeholder]="field.placeholder || ''"></ion-input>
 
-          <ion-input *ngSwitchCase="'phone'" [formControlName]="field.id || (field.label | lowercase | replace:' ':'-')" type="tel"
+          <ion-input *ngSwitchCase="'phone'" [formControlName]="getControlName(field)" type="tel"
             [label]="field.label + (field.required ? ' *' : '')"
             labelPlacement="floating"
             [placeholder]="field.placeholder || ''"></ion-input>
 
-          <ion-input *ngSwitchCase="'date'" [formControlName]="field.id || (field.label | lowercase | replace:' ':'-')" type="date"
+          <ion-input *ngSwitchCase="'date'" [formControlName]="getControlName(field)" type="date"
             [label]="field.label + (field.required ? ' *' : '')"
             labelPlacement="floating"></ion-input>
 
-          <ion-textarea *ngSwitchCase="'textarea'" [formControlName]="field.id || (field.label | lowercase | replace:' ':'-')"
+          <ion-textarea *ngSwitchCase="'textarea'" [formControlName]="getControlName(field)"
             [label]="field.label + (field.required ? ' *' : '')"
             labelPlacement="floating" [placeholder]="field.placeholder || ''" rows="4"
             autoGrow="true"></ion-textarea>
 
           <!-- Radio Group -->
           <ion-list *ngSwitchCase="'radio'" class="ion-no-padding dynamic-field-options-list">
-            <ion-radio-group [formControlName]="field.id || (field.label | lowercase | replace:' ':'-')">
+            <ion-radio-group [formControlName]="getControlName(field)">
               <ion-list-header>
                 <ion-label>
                   {{ field.label }}
@@ -54,12 +54,12 @@
       </ion-item>
 
       <!-- Validation Messages -->
-      <div *ngIf="dynamicForm.get(field.id || (field.label | lowercase | replace:' ':'-'))?.invalid && 
-                   (dynamicForm.get(field.id || (field.label | lowercase | replace:' ':'-'))?.touched || 
-                    dynamicForm.get(field.id || (field.label | lowercase | replace:' ':'-'))?.dirty)"
+      <div *ngIf="dynamicForm.get(getControlName(field))?.invalid && 
+                   (dynamicForm.get(getControlName(field))?.touched || 
+                    dynamicForm.get(getControlName(field))?.dirty)"
         class="error-message ion-padding-start">
-        <small *ngIf="dynamicForm.get(field.id || (field.label | lowercase | replace:' ':'-'))?.errors?.['required']">This field is required.</small>
-        <small *ngIf="dynamicForm.get(field.id || (field.label | lowercase | replace:' ':'-'))?.errors?.['email']">Please enter a valid email address.</small>
+        <small *ngIf="dynamicForm.get(getControlName(field))?.errors?.['required']">This field is required.</small>
+        <small *ngIf="dynamicForm.get(getControlName(field))?.errors?.['email']">Please enter a valid email address.</small>
       </div>
     </ion-card>
   </ion-list>

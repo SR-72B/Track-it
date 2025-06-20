@@ -26,7 +26,7 @@ export class CustomerOrderFormComponent implements OnInit, OnDestroy {
   formId: string | null = null;
   orderForm: OrderForm | undefined;
   dynamicForm: FormGroup;
-  fields: FormArray; // Added missing fields property
+  fields: FormArray;
   selectedFiles: File[] = [];
   isLoading = true;
   isSubmitting = false;
@@ -45,7 +45,7 @@ export class CustomerOrderFormComponent implements OnInit, OnDestroy {
     private cdr: ChangeDetectorRef
   ) {
     this.dynamicForm = this.fb.group({});
-    this.fields = this.fb.array([]); // Initialize fields FormArray
+    this.fields = this.fb.array([]);
   }
 
   ngOnInit() {
@@ -143,6 +143,10 @@ export class CustomerOrderFormComponent implements OnInit, OnDestroy {
     
     this.dynamicForm = this.fb.group(formControls);
     this.fields = this.fb.array(fieldsArray);
+  }
+
+  getControlName(field: any): string {
+    return field.id || field.label.toLowerCase().replace(/\s+/g, '-');
   }
 
   onFileSelected(event: any) {
