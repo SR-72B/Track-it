@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "public": "dist/track-it",
+    "public": "dist/track-it-app",
     "predeploy": "npm ci && npm run build",
     "ignore": [
       "firebase.json",
@@ -47,3 +47,4 @@
     "singleProjectMode": true
   }
 }
+
