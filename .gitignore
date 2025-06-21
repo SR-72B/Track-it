@@ -15,22 +15,23 @@
 *.log
 npm-debug.log*
 yarn-error.log*
-# package-lock.json # If you use yarn, keep yarn.lock and ignore this
-# yarn.lock # If you use npm, keep package-lock.json and ignore this (commit one lock file)
 
 # Firebase
-# .firebase/ # Contains local emulator data; firebase.json should usually be committed.
-# !firebase.json # Ensures firebase.json is NOT ignored if a broader rule matches.
+.firebase/
+# Keep firebase.json and .firebaserc - these are configuration files needed for deployment
+
+# Environment files with sensitive data
+src/environments/environment.ts
+src/environments/environment.prod.ts
+*.env
+.env*
 
 # Dataconnect / pgliteData
-# This is for your raw database files and should almost certainly be ignored.
 dataconnect/.dataconnect/pgliteData/
 
 # OS generated files
 .DS_Store
 Thumbs.db
-# Add these lines to your .gitignore file
-echo "src/environments/environment.ts" >> .gitignore
-echo "src/environments/environment.prod.ts" >> .gitignore
-echo "*.env" >> .gitignore
 
+# Add firebase.config.ts to .gitignore
+firebase.config.ts
