@@ -1,12 +1,14 @@
-// src/environments/environment.prod.ts
+
 export const environment = {
-    production: true,
-    firebase: {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "track-it-app.firebaseapp.com",
-      projectId: "track-it-app",
-      storageBucket: "track-it-app.appspot.com",
-      messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-      appId: "YOUR_APP_ID"
-    }
-  };
+  production: true,
+  firebase: {
+    apiKey: "AIzaSyATHHTL8TqoLdRXhNzZcQzEWOoHmef4MSo",
+    authDomain: "track-it-30b38.firebaseapp.com",
+    databaseURL: "https://track-it-30b38-default-rtdb.firebaseio.com",
+    projectId: "track-it-30b38",
+    storageBucket: "track-it-30b38.firebasestorage.app",
+    messagingSenderId: "566924400410",
+    appId: "1:566924400410:web:70f359f697c9001b24fea3",
+    measurementId: "G-CFHN2CLLSJ"
+  }
+};
