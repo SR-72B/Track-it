@@ -29,3 +29,8 @@ dataconnect/.dataconnect/pgliteData/
 # OS generated files
 .DS_Store
 Thumbs.db
+# Add these lines to your .gitignore file
+echo "src/environments/environment.ts" >> .gitignore
+echo "src/environments/environment.prod.ts" >> .gitignore
+echo "*.env" >> .gitignore
+
